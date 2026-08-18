@@ -1,0 +1,33 @@
+# Local Claude Code settings (machine-specific permissions)
+.claude/settings.local.json
+
+# Node
+node_modules/
+npm-debug.log*
+dist/
+build/
+
+# Foundry
+out/
+cache/
+broadcast/
+
+# circom / snarkjs artifacts (large, regenerable)
+*.r1cs
+*.sym
+*.ptau
+*.zkey
+*_js/
+
+# Xcode / iOS
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+*.ipa
+
+# OS
+.DS_Store
+
+# Env
+.env
+.env.local
