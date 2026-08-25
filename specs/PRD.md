@@ -271,6 +271,7 @@ A holder whose attributes fail the regime's predicates cannot produce a valid pr
 | **Issuer service** | Credential issuance, Merkle tree custody, revocation, root publication | MacBook | 3001 |
 | **Platform backend** | Offering policy, presentation requests, proof intake, on-chain submission | MacBook | 3002 |
 | **Platform frontend** | Investor-facing offering UI, QR presentation, result display | MacBook | 5173 |
+| **Measurement collector** | Ingests structured measurement records synced from the device (TR-16) | MacBook | 3003 |
 | **Holder app** | Credential storage, on-device proving, consent UI, measurement | iPhone 14 Pro | — |
 
 ### 9.2 Stack per component
@@ -315,7 +316,7 @@ A holder whose attributes fail the regime's predicates cannot produce a valid pr
 
 **Measurement**
 
-- Structured records emitted on-device, exported to the Mac
+- Structured records persisted on-device first, then synced to the measurement collector on the Mac — durable queue, not fire-and-forget, so a run survives the collector being briefly unreachable
 - Analysis scripts on the Mac producing summary tables
 
 ### 9.3 Transport bindings
@@ -324,6 +325,7 @@ A holder whose attributes fail the regime's predicates cannot produce a valid pr
 - **Presentation request:** platform frontend → holder app via QR code.
 - **Proof delivery:** holder app → platform backend over local HTTP.
 - **Verification:** platform backend → local chain. *The platform submits the transaction, not the holder — this matches real RWA compliance flows and avoids requiring a funded account on the phone.*
+- **Measurement sync:** holder app / on-device harness → measurement collector over local HTTP. Records are written to durable on-device storage immediately after each run, then synced; the client retries until the collector acknowledges receipt, so no record is lost to a transient network or collector outage. Sync happens after proof generation completes, never during it (TR-8).
 
 ### 9.4 Trust boundaries
 
