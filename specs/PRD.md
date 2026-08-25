@@ -12,7 +12,7 @@
 
 ## 1. Executive Summary
 
-**What this is.** A working, end-to-end system in which a person proves on their own phone that they qualify as an accredited/sophisticated investor under Spanish and EU rules — *without disclosing income, net worth, employment, or identity* — and an investment platform verifies that claim on-chain, learning nothing beyond a yes/no.
+**What this is.** A working, end-to-end system in which a person proves on their own phone that they qualify as a sophisticated investor under EU rules — *without disclosing income, net worth, employment, or identity* — and an investment platform verifies that claim on-chain, learning nothing beyond a yes/no.
 
 **The problem.** Investing through a regulated platform today means surrendering payslips, bank certificates, tax returns and identity documents to establish a single boolean: *may this person invest, and up to how much?* The platform then stores that dossier permanently — a compliance burden for them and a standing breach risk for the investor. The regulation only ever required the boolean.
 
@@ -50,7 +50,6 @@ Qualifies on **at least two of three**:
 | --- | --- | --- |
 | (a) | Gross income **or** portfolio | ≥ €60,000/yr **or** portfolio > €100,000 |
 | (b) | Professional experience | ≥ 1 yr financial sector in a knowledge-requiring role **or** ≥ 12 mo executive at a qualifying entity |
-| (c) | Market activity | significant-size transactions averaging ≥ 10/quarter over 4 quarters |
 
 ### 2.3 Investment ceiling (non-sophisticated)
 
@@ -58,7 +57,7 @@ Investment above **the higher of €1,000 or 5% of net worth** triggers addition
 
 ### 2.4 Why this regulation suits ZK
 
-The EU **2-of-3** structure is a *threshold predicate over heterogeneous sub-conditions* — substantive circuit design rather than a single comparison. Supporting **both** regimes over one credential demonstrates that the architecture generalises across jurisdictions, which is the product claim that matters to a platform operating cross-border.
+The EU structure is a *threshold predicate over heterogeneous sub-conditions* — substantive circuit design rather than a single comparison, even reduced to 2-of-2 for the MVP (§2.2). Modelling it as a generic M-of-N comparator, rather than hardcoding "both," is what keeps this a genuine architectural showcase rather than an AND gate — and is what makes cross-jurisdiction extensibility (re-adding condition (c), or the Spanish regime) a configuration change rather than a rebuild.
 
 ---
 
@@ -66,20 +65,28 @@ The EU **2-of-3** structure is a *threshold predicate over heterogeneous sub-con
 
 | # | Predicate | Type | Regime |
 | --- | --- | --- | --- |
-| P1 | income ≥ threshold | range | ES (€50k) / EU (€60k) |
+| P1 | income ≥ threshold | range | EU (€60k) |
 | P2 | financial assets / portfolio > €100,000 | range | both |
-| P3 | advisory contract with an authorised firm | set membership | ES |
-| P4 | ≥1 yr financial sector **or** ≥12 mo executive | range + set membership | EU (b) |
-| P5 | ≥10 significant transactions/quarter × 4 quarters | aggregate + range | EU (c) |
-| P6 | **at least 2 of {a, b, c} hold** | **threshold-of-N** | EU — the showcase |
-| P7 | jurisdiction ∈ allowed set | set membership | both |
-| P8 | subject ∉ sanctions set | set non-membership | both |
-| P9 | credential not expired | freshness | both |
-| P10 | credential not revoked | Merkle membership in current valid-set root | both |
-| P11 | investment ≤ max(€1,000, 5% × net worth) | multiplication + comparison | both |
-| P12 | scope-bound single use | nullifier | both |
+| P3 | ≥1 yr financial sector **or** ≥12 mo executive | range + set membership | EU (b) |
+| P4 | at least 2 of {a, b} hold (2-of-2, generic M-of-N construct) | threshold-of-N | EU — the showcase |
+| P5 | jurisdiction ∈ allowed set | set membership | both |
+| P6 | subject ∉ sanctions set | set non-membership | both |
+| P7 | credential not expired | freshness | both |
+| P8 | credential not revoked | Merkle membership in current valid-set root | both |
+| P9 | investment ≤ max(€1,000, 5% × net worth) | multiplication + comparison | both |
+| P10 | scope-bound single use | nullifier | both |
 
-**Complexity dial.** Because greenfield primitives are uniformly cheap, the measurement axis is deliberate complexity scaling: Merkle depth (16 → 20 → 32), predicate count (P1 alone → full set), allowlist/sanctions set sizes, and regime (ES 1-of-3 vs EU 2-of-3).
+**Complexity dial.** Because greenfield primitives are uniformly cheap, the measurement axis is deliberate complexity scaling: Merkle depth (16 → 20 → 32), predicate count (P1 alone → full set), allowlist/sanctions set sizes, and regime (EU 2-of-3).
+
+### 3.1 Credential & Tree Structure — Decision
+
+**Decision: Option A — single tree, full attributes in the leaf, predicate logic evaluated at proof time.**
+
+Each leaf in the valid-set tree is a Poseidon commitment over the holder's **complete attested attribute set** (income, portfolio, professional-experience data, holder secret) — not a pre-classified "qualifies / doesn't" flag, and not one tree per qualification level. The issuer's only job is attesting raw facts and maintaining one tree. All eligibility logic — including the M-of-N threshold (P4) and every other predicate — is evaluated **inside the circuit at proof time**, against whichever policy the verifying platform specifies for that offering (PR-20).
+
+**Rejected alternative (Option B):** separate trees pre-computed per qualification ("EU-sophisticated" list, "ES-accredited" list, etc.), where the issuer does the eligibility math off-chain and membership alone is the proof. Rejected because it collapses the project's core contribution — the predicate is no longer proven, only list membership, which is a strictly easier problem existing tools (e.g. Semaphore) already solve. It also means every new or amended rule requires the issuer to build and maintain a new list, whereas under Option A a new rule is just a new circuit run against the same tree.
+
+*(This decision is separate from, but consistent with, the still-open question of whether the issuer signature needs in-circuit verification given tree membership already attests the leaf — tracked in F1.5, to be resolved with measured constraint deltas in Phase 2.)*
 
 ---
 
@@ -138,7 +145,7 @@ Five flows define the system's behaviour.
 ### Flow 2 — Eligibility Presentation (core flow)
 
 1. Holder browses an offering on the platform.
-2. Platform issues a presentation request specifying regime, scope, epoch, and intended investment amount.
+2. Platform issues a presentation request specifying scope, epoch, and intended investment amount.
 3. Holder app displays *what will be proven and what will be revealed*, and requests consent.
 4. Holder app generates the proof **entirely on-device**.
 5. Holder app returns proof and public inputs to the platform.
@@ -192,23 +199,22 @@ A holder whose attributes fail the regime's predicates cannot produce a valid pr
 
 ### 7.4 Regulatory modelling
 
-- **PR-13** The system SHALL support the Spanish 1-of-3 regime and the EU 2-of-3 regime over a single credential.
-- **PR-14** The verifier SHALL specify which regime is required per offering.
-- **PR-15** The system SHALL enforce the investment ceiling predicate relative to undisclosed net worth.
-- **PR-16** Deviations from actual regulation SHALL be documented.
+- **PR-13** The system SHALL support the EU 2-of-3 regime over a single credential.
+- **PR-14** The system SHALL enforce the investment ceiling predicate relative to undisclosed net worth.
+- **PR-15** Deviations from actual regulation SHALL be documented.
 
 ### 7.5 Holder experience
 
-- **PR-17** The holder SHALL be shown what will be proven and what will be revealed before consenting.
-- **PR-18** Proof generation SHALL surface honest progress and real elapsed time — no artificial delay, no concealed latency.
-- **PR-19** The holder SHALL be able to inspect their credential's attributes, issuer, epoch and expiry locally.
-- **PR-20** Failures (expired, revoked, ineligible) SHALL be distinguishable to the *holder*, though not to the verifier.
+- **PR-16** The holder SHALL be shown what will be proven and what will be revealed before consenting.
+- **PR-17** Proof generation SHALL surface honest progress and real elapsed time — no artificial delay, no concealed latency.
+- **PR-18** The holder SHALL be able to inspect their credential's attributes, issuer, epoch and expiry locally.
+- **PR-19** Failures (expired, revoked, ineligible) SHALL be distinguishable to the *holder*, though not to the verifier.
 
 ### 7.6 Verifier experience
 
-- **PR-21** The platform SHALL define per-offering eligibility policy (regime, jurisdictions, cap).
-- **PR-22** The platform SHALL present a verification result traceable to an on-chain transaction.
-- **PR-23** The platform SHALL NOT be capable of storing attribute data, by construction.
+- **PR-20** The platform SHALL define per-offering eligibility policy (regime, jurisdictions, cap).
+- **PR-21** The platform SHALL present a verification result traceable to an on-chain transaction.
+- **PR-22** The platform SHALL NOT be capable of storing attribute data, by construction.
 
 ---
 
@@ -358,16 +364,16 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 **Requirements**
 
 - F2.1 The credential SHALL bind all §2 attributes to a holder secret via a Poseidon commitment, signed by the issuer (TR-2, TR-3).
-- F2.2 Circuits SHALL implement P1–P11.
-- F2.3 Both the ES 1-of-3 and EU 2-of-3 regimes SHALL be satisfiable from a single credential (PR-13).
-- F2.4 The threshold-of-N predicate (P6) SHALL be implemented as a first-class construct.
-- F2.5 The investment ceiling (P11) SHALL be enforced against undisclosed net worth.
+- F2.2 Circuits SHALL implement P1–P10.
+- F2.3 The EU 2-of-3 regime SHALL be satisfiable from a single credential (PR-13).
+- F2.4 The threshold-of-N predicate (P4) SHALL be implemented as a first-class construct.
+- F2.5 The investment ceiling (P9) SHALL be enforced against undisclosed net worth.
 - F2.6 Circuits SHALL be parameterised per TR-6.
 - F2.7 A test suite SHALL demonstrate correct acceptance and rejection across eligible, ineligible, boundary, and malformed inputs.
 
-**Deliverable D1 — Eligibility Circuit Suite:** parameterised circuits covering both regimes, with a correctness test suite and constraint counts across the complexity dial.
+**Deliverable D1 — Eligibility Circuit Suite:** parameterised circuits covering the EU regime, with a correctness test suite and constraint counts across the complexity dial.
 
-**Acceptance:** eligible holders produce valid proofs and ineligible ones cannot, under both regimes; constraint counts are documented per configuration.
+**Acceptance:** eligible holders produce valid proofs and ineligible ones cannot, under the EU regime; constraint counts are documented per configuration.
 
 ---
 
@@ -382,7 +388,7 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 - F3.3 The issuer service SHALL expose issuance and revocation over local HTTP, and SHALL publish roots to the chain.
 - F3.4 The issuer SHALL maintain the valid-set tree with epoch rotation per §4.1.
 - F3.5 Revocation SHALL cause proof failure from the following epoch (PR-10) without holder cooperation (PR-9).
-- F3.6 Per-offering eligibility policy SHALL be configurable on-chain (PR-21).
+- F3.6 Per-offering eligibility policy SHALL be configurable on-chain (PR-20).
 - F3.7 Gas SHALL be measured across predicate configurations (TR-14).
 
 **Deliverable D2 — Verification Infrastructure:** deployed contracts, working issuer service, functioning epoch rotation and revocation, gas measurements.
@@ -399,7 +405,7 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 
 - F4.1 The holder app SHALL obtain and store credentials per Flow 1, satisfying PR-5.
 - F4.2 The holder app SHALL generate eligibility proofs on-device per PR-1, PR-2, TR-7, TR-8.
-- F4.3 The app SHALL present consent showing what is proven and what is revealed (PR-17), with honest progress (PR-18).
+- F4.3 The app SHALL present consent showing what is proven and what is revealed (PR-16), with honest progress (PR-17).
 - F4.4 The platform frontend and backend SHALL implement Flow 2 end-to-end.
 - F4.5 All five user flows (§6) SHALL execute successfully.
 - F4.6 The three demo beats (§5) SHALL be demonstrable in a single session.
@@ -445,9 +451,7 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 **Scope reduction levers, in order of preference:**
 
 1. Reduce the complexity dial range in Phase 5.
-2. Drop P5 (transaction-frequency aggregate) — the most expensive sub-condition.
-3. Drop the ES regime, retaining EU 2-of-3 *(retains the showcase predicate)*.
-4. Reduce the platform frontend to a minimal interface.
+2. Reduce the platform frontend to a minimal interface.
 
 ---
 
@@ -461,6 +465,8 @@ To be stated plainly in all output.
 - **L4 — Regulatory modelling is a good-faith approximation**, not legal compliance.
 - **L5 — Single device, single library.** Results characterise circom/Groth16 on an A16-class device. No claim is made about other stacks or hardware.
 - **L6 — Not production-hardened.** No security audit, no key management discipline, no adversarial testing.
+- **L7 — EU regime is 2-of-2, not 2-of-3.** Condition (c) (market activity, P5) was dropped as the most expensive sub-condition. The threshold predicate is built as a generic M-of-N construct (F2.4), so this is a configuration limit rather than an architectural one — but the MVP result characterises 2-of-2, not the full regulation.
+- **L8 — Spanish regime not implemented.** Retained in §2.1 as regulatory reference only. Its unique predicate, P3 (advisory-contract membership), is consequently out of scope too.
 
 ---
 
@@ -485,6 +491,7 @@ To be stated plainly in all output.
 4. Cross-scope cap enforcement without linkage — the unsolved half of §4.2.
 5. Android and cross-device measurement.
 6. Delegated attestation from real financial institutions.
+7. Reinstate EU condition (c) (P5) and/or the Spanish regime (P3), if Phase 2 constraint counts show headroom — the M-of-N construct (F2.4) is built to make this a configuration change, not a redesign.
 
 ---
 
