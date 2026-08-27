@@ -28,7 +28,7 @@ One JSON object per run. Device-agnostic by design (TR-17): the `device` object'
   "circuit": {
     "name": "poseidon-baseline",
     "git_commit": "<repo commit hash of circuits/ at build time>",
-    "parameters": { "arity": 5 },
+    "parameters": { "arity": 10 },
     "constraint_count": 0
   },
   "backend": {

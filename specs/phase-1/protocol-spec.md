@@ -62,14 +62,18 @@ Reflects the PRD v4.1 scope: EU regime only, 2-of-2 threshold (P4), predicates P
 
 ### 4.2 Commitment Structure
 
-Two-level Poseidon hash, chosen to stay within standard, well-supported arities (2 and 5) rather than depending on a single high-arity Poseidon instance:
+Two steps, not one flat hash — because the issuer and the holder each compute a different part, and neither can compute the other's part:
 
 ```
-group_a   = Poseidon(income, portfolio_value, financial_sector_months, executive_months, jurisdiction_code)
-group_b   = Poseidon(identity_commitment, net_worth, issued_epoch, expiry_epoch, schema_version)
-attr_hash = Poseidon(group_a, group_b)
+attr_hash = Poseidon(income, portfolio_value, financial_sector_months, executive_months,
+                      jurisdiction_code, identity_commitment, net_worth,
+                      issued_epoch, expiry_epoch, schema_version)
 leaf      = Poseidon(holder_secret, attr_hash)
 ```
+
+`attr_hash` is a single 10-input Poseidon call — circomlib (pinned commit, [toolchain-baseline.md §2](toolchain-baseline.md#2-pinned-toolchain-versions)) ships reference-derived round constants for Poseidon state widths up to `t=17` (i.e. up to 16 inputs), so arity 10 is exactly as standard and audited as arity 2; there is no benefit to splitting it into smaller groups, and doing so would cost more constraints (each additional Poseidon call pays its own full-round overhead) for no robustness gain.
+
+The two-*step* structure itself (`attr_hash`, then `leaf`) is load-bearing, not arity-driven: at issuance the issuer receives the raw attribute values to verify them out-of-band (Flow 1) and must be able to independently recompute `attr_hash` to confirm the holder isn't misrepresenting what's bound into the credential — but per PR-5 the issuer must never learn `holder_secret`. Only the holder, who alone holds the secret, can compute `leaf`. The holder computes it locally and sends the issuer the opaque `leaf` value (a hash, not a secret preimage) for insertion into the tree.
 
 `leaf` is what the issuer inserts into the valid-set tree (§5). This grouping is a Phase 1 design choice, not yet constraint-measured — if F1.4's Poseidon baseline shows a different arity is meaningfully cheaper, this structure may be revised before Phase 2 implementation (flagged in §8).
 
@@ -187,7 +191,6 @@ Reuses PRD §9.4 verbatim — repeated here for a self-contained threat model:
 
 ## 9. Open Items Deferred to Phase 2/3
 
-- **Poseidon arity grouping (§4.2)** — validated against actual F1.4 constraint measurements; may be revised.
 - **Epoch rotation cadence policy** — issuer-service configuration, decided during Phase 3 implementation (F3.4).
 - **Sanctions/jurisdiction tree maintenance procedure** — issuer-service implementation detail (insertion, sorting, adjacency upkeep for §5.3), Phase 3.
 - **Exact `scope` derivation from `offering_id`** — Phase 3 platform-backend implementation detail; the protocol only requires it be a field element unique per offering.
