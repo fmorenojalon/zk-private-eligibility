@@ -33,7 +33,7 @@ cargo build --release --manifest-path ~/src/circom/Cargo.toml
 cp ~/src/circom/target/release/circom /opt/homebrew/bin/circom
 ```
 
-Requires Rust/cargo (any recent stable toolchain — mopro's own dependency, so already required elsewhere in this project).
+Requires Rust/cargo (any recent stable toolchain — mopro's own dependency, so already required elsewhere in this project). Building circom from source needs only a stable toolchain; the *newer* toolchain requirement in §7 is specific to mopro-cli.
 
 ## 5. snarkjs v0.7.6 + circomlib (pinned commit)
 
@@ -56,9 +56,32 @@ circom --version  # circom compiler 2.2.3
 cd circuits && npx snarkjs --version   # snarkjs@0.7.6
 ```
 
-## 7. iOS toolchain (F1.1 — blocked, not yet done on this machine)
+## 7. iOS toolchain
 
-- **Full Xcode** (not just Command Line Tools) — install from the App Store, then `sudo xcode-select -s /Applications/Xcode.app`.
-- **Apple Developer account** — free personal team is sufficient to start; sign in via Xcode → Settings → Accounts.
-- **mopro-cli v0.3.7** — `cargo install mopro-cli --version 0.3.7` (or per mopro's own install docs) once Xcode is in place.
-- **iPhone 14 Pro** — enable Developer Mode (Settings → Privacy & Security → Developer Mode) and trust this Mac when connected.
+- **Xcode 26.3**, not the App Store default. As of this writing the App Store only offers Xcode 26.4+, which requires macOS 26.2 (Tahoe); Xcode 26.3 is the newest release that still supports macOS 15.6 (Sequoia). Download it directly from [developer.apple.com/download/all](https://developer.apple.com/download/all/) (requires a signed-in Apple ID — free tier is fine), unarchive the `.xip`, and drag `Xcode.app` into `/Applications`. Re-check this constraint before reproducing on a machine running a newer macOS — the App Store version may be usable by then.
+- Accept the license and run first-launch component install (needs an interactive terminal — `xcode-select -s` alone does not do this):
+  ```sh
+  sudo xcodebuild -license
+  sudo xcodebuild -runFirstLaunch
+  ```
+- **Apple Developer account** — free personal team is sufficient to start (expect the 7-day on-device resign limit during iteration). Sign in via Xcode → Settings → Accounts → "+" → Apple ID; confirm a team appears under the account.
+- **CMake** (mopro-ffi build dependency):
+  ```sh
+  brew install cmake
+  ```
+- **Rust toolchain ≥ 1.85** (mopro-cli's dependency tree requires the `edition2024` Cargo feature, stabilized in 1.85; circom itself builds fine on older stable Rust, so this is specifically a mopro-cli requirement):
+  ```sh
+  rustup update stable
+  ```
+- **iOS Rust compilation targets**:
+  ```sh
+  rustup target add aarch64-apple-ios aarch64-apple-ios-sim
+  ```
+- **mopro-cli v0.3.7**:
+  ```sh
+  cargo install mopro-cli --version 0.3.7
+  ```
+- **iPhone 14 Pro** — enable Developer Mode (Settings → Privacy & Security → scroll to Developer Mode → toggle on → restart → confirm), connect via cable, tap "Trust This Computer". Verify pairing:
+  ```sh
+  xcrun devicectl list devices   # should show the iPhone as "connected"
+  ```

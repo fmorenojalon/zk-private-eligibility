@@ -23,8 +23,8 @@ Recorded here for reproducibility (TR-19); every measurement record also carries
 | Foundry (forge, anvil, cast) | v1.7.1 | [foundry-rs/foundry](https://github.com/foundry-rs/foundry) releases |
 | Node.js | v22 LTS (22.23.2) | nodejs.org |
 | mopro-cli | v0.3.7 | [zkmopro/mopro](https://github.com/zkmopro/mopro) releases |
-| Xcode | latest stable compatible with the iPhone 14 Pro's installed iOS version | **blocker:** only Command Line Tools are currently active on the build machine; full Xcode.app must be installed before F1.1 work starts |
-| Rust/cargo | 1.83 (already present) | mopro's Rust core dependency |
+| Xcode | 26.3 | newest release supporting macOS 15.6 (Sequoia) — the App Store currently defaults to 26.4+, which requires macOS 26.2 (Tahoe); installed directly from developer.apple.com instead |
+| Rust/cargo | stable ≥ 1.85 (1.98.0 installed) | mopro-cli's dependency tree requires the `edition2024` Cargo feature (stabilized in 1.85); circom itself only needs any recent stable toolchain |
 
 **Re-pin policy:** if a pinned tool receives a breaking release mid-phase, the spec is updated first (per the project's spec-before-implementation rule), not silently upgraded in code.
 
@@ -99,7 +99,7 @@ All values go through the measurement harness ([measurement-harness.md](measurem
 5. Proof + public signals exported off-device (via the measurement collector's sync path, or directly for verification testing)
 6. Proof verified against the generated Solidity verifier on Anvil (§7)
 
-**Hard constraint (TR-7):** proofs generated in the iOS Simulator do not count as valid measurements or satisfy F1.1 — must run on the physical iPhone 14 Pro. **Current blocker:** requires full Xcode (not just CLT) and an Apple Developer account (free tier acceptable per user decision; expect 7-day re-signing during iteration) — both outstanding per the Phase 1 kickoff environment audit.
+**Hard constraint (TR-7):** proofs generated in the iOS Simulator do not count as valid measurements or satisfy F1.1 — must run on the physical iPhone 14 Pro. Toolchain and device setup are complete: Xcode 26.3 installed and licensed, free personal-team Apple Developer account active, iPhone 14 Pro paired and recognized by `devicectl`. Full install steps recorded in [TOOLCHAIN.md](../../TOOLCHAIN.md) for reproducibility (TR-19).
 
 **No network during proving (TR-8):** the harness app must not require network access while the proof is being generated; the device may go on Wi-Fi only afterward to sync measurement records ([measurement-harness.md §4](measurement-harness.md#4-emission--export-path)).
 
