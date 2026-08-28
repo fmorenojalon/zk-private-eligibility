@@ -122,6 +122,8 @@ All values go through the measurement harness ([measurement-harness.md](measurem
 
 This is the acceptance test for F1.2 directly — no additional interpretation needed at Phase 1 review.
 
+**Status: satisfied.** `contracts/` (Foundry project) holds the generated `Groth16Verifier.sol`. `forge test` passes all three cases against Foundry's in-memory EVM, using a real proof/public-signal fixture from `circuits/poseidon-baseline/{proof,public}.json`. Independently confirmed against an actual running Anvil process (`anvil --port 8545`, matching the PRD §9.1 Local chain service) via `forge create` + `cast call verifyProof(...)`: the genuine proof returns `true`, a tampered public input returns `false` — not a revert, since the generated verifier's assembly checks the pairing precompile's success flag and returns a bool rather than propagating a raw failure. See `contracts/README.md` for exact reproduction commands.
+
 ---
 
 ## 8. Acceptance Mapping
