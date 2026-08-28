@@ -99,7 +99,9 @@ All values go through the measurement harness ([measurement-harness.md](measurem
 5. Proof + public signals exported off-device (via the measurement collector's sync path, or directly for verification testing)
 6. Proof verified against the generated Solidity verifier on Anvil (§7)
 
-**Hard constraint (TR-7):** proofs generated in the iOS Simulator do not count as valid measurements or satisfy F1.1 — must run on the physical iPhone 14 Pro. Toolchain and device setup are complete: Xcode 26.3 installed and licensed, free personal-team Apple Developer account active, iPhone 14 Pro paired and recognized by `devicectl`. Full install steps recorded in [TOOLCHAIN.md](../../TOOLCHAIN.md) for reproducibility (TR-19).
+**Hard constraint (TR-7):** proofs generated in the iOS Simulator do not count as valid measurements or satisfy F1.1 — must run on the physical iPhone 14 Pro.
+
+**Status: satisfied.** `holder-app-ios/mopro-baseline` wraps the `poseidon-baseline` circuit via mopro, builds and signs against a free personal-team Apple Developer account, and its `MoproAppUITests.testCircomProveVerify` test — which launches the app on the paired iPhone 14 Pro, taps "Prove", and asserts the proof completes — passed running natively on-device (`xcodebuild test -destination "id=<device UDID>"`, physical device confirmed via `devicectl`/`xctrace`, not the Simulator). Toolchain and device setup steps, including several non-obvious build/signing issues encountered getting here, are recorded in [TOOLCHAIN.md §8](../../TOOLCHAIN.md#8-building-an-f11-style-mopro-app-for-a-physical-device-gotchas) for reproducibility (TR-19).
 
 **No network during proving (TR-8):** the harness app must not require network access while the proof is being generated; the device may go on Wi-Fi only afterward to sync measurement records ([measurement-harness.md §4](measurement-harness.md#4-emission--export-path)).
 

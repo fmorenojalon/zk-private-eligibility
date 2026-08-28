@@ -18,12 +18,21 @@ broadcast/
 *.ptau
 *.zkey
 *_js/
+# exception: holder-app-ios zkeys are bundled runtime assets the app needs to
+# build/run, not transient proving scratch - small enough to check in, and
+# regenerating them requires a multi-tool pipeline (circom + snarkjs) plus
+# manually re-wiring the Xcode project, so committing them keeps a known-good
+# state reproducible without redoing that by hand.
+!holder-app-ios/**/*.zkey
 
 # Xcode / iOS
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
 DerivedData/
 *.ipa
+
+# mopro generated bindings (regenerable via `mopro build` / `mopro create` / `mopro update`)
+MoproiOSBindings/
 
 # OS
 .DS_Store

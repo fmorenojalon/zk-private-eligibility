@@ -85,3 +85,27 @@ cd circuits && npx snarkjs --version   # snarkjs@0.7.6
   ```sh
   xcrun devicectl list devices   # should show the iPhone as "connected"
   ```
+
+## 8. Building an F1.1-style mopro app for a physical device (gotchas)
+
+Getting `holder-app-ios/mopro-baseline` running natively on the iPhone surfaced several non-obvious issues, recorded here so a clean checkout doesn't have to rediscover them:
+
+- **`mopro build` / `mopro create` hang forever with no output in a non-interactive shell.** Their default flow shows an arrow-key menu (build mode, platform, architecture); with no real TTY attached, the menu redraws in an infinite loop burning 100% CPU while never receiving input — it is not "just slow." Always pass the flags that skip the prompts:
+  ```sh
+  mopro build --mode release --platforms ios --architectures aarch64-apple-ios aarch64-apple-ios-sim --no-auto-update
+  mopro create --framework ios
+  ```
+  If a `mopro` process is pinned at ~100% CPU with near-zero memory and no `cargo`/`rustc` children, it's stuck in this loop, not building — kill it and re-run with explicit flags.
+- **Circuit identifiers passed to `rust_witness::witness!(...)` must not contain underscores.** `w2c2` (used internally to transpile the circuit's `.wasm` to native code) sanitizes the wasm module name by stripping underscores when generating C symbol names, but `rust_witness`'s macro does not apply the same sanitization to the `extern "C"` bindings it generates. An underscored name (e.g. `poseidon_baseline`) produces a link-time "Undefined symbols" error (`_poseidon_baselineFreeInstance` expected vs. `_poseidonbaselineFreeInstance` actually generated) — not a compile error, so it's easy to misdiagnose. Name circuit `.wasm`/`.zkey` files without underscores (e.g. `poseidonbaseline.wasm`).
+- **`mopro create`'s default bundle identifier (`mopro.MoproApp`) is not available** on a fresh account/team — registering it fails with "Failed Registering Bundle Identifier." Change `PRODUCT_BUNDLE_IDENTIFIER` to a unique reverse-DNS string (e.g. `com.<you>.<project>.MoproApp`) for all three targets (`MoproApp`, `MoproAppTests`, `MoproAppUITests`).
+- **`DEVELOPMENT_TEAM` must be set for all three targets, not just the main app.** Selecting a team in Xcode's Signing & Capabilities UI only sets it for the target you were viewing (`MoproApp`); `MoproAppTests` and `MoproAppUITests` need the same `DEVELOPMENT_TEAM` value in `project.pbxproj` or `xcodebuild test` fails with the same "requires a development team" error even though the app itself builds fine.
+- **A fresh Xcode install may be missing the iOS platform matching the device's exact OS version**, failing with `iOS 26.2 is not installed. Please download and install the platform from Xcode > Settings > Components.` even though the Xcode version itself supports newer iOS. Fetch it from the command line instead of the GUI:
+  ```sh
+  xcodebuild -downloadPlatform iOS
+  ```
+- **`xcrun devicectl list devices` and `xcodebuild -destination` use different device identifier namespaces.** `devicectl` reports a CoreDevice UUID; `xcodebuild`/`xctrace` want the classic UDID-style identifier. Get the right one with:
+  ```sh
+  xcrun xctrace list devices   # use this ID for `xcodebuild -destination "id=..."`
+  ```
+- **First launch of a personal-team-signed app requires manually trusting the developer certificate on the device itself** — Settings → General → VPN & Device Management → select the developer profile → Trust. No command-line bypass; this is a one-time step per device per Apple ID.
+- **Running `xcodebuild test -only-testing:...` is a reliable way to verify on-device proving without manual interaction** — it launches the app, drives the UI (tap buttons, wait for expected text), and reports pass/fail, which is more verifiable than asking someone to eyeball the phone screen.
