@@ -82,6 +82,8 @@ Four standalone circuits, no credential logic — pure primitive measurement:
 
 All values go through the measurement harness ([measurement-harness.md](measurement-harness.md)) as structured records, not ad-hoc notes.
 
+**Status: satisfied (desktop; on-device pending).** All four circuits are built, set up, and proven/verified across their full parameter sets — full results, methodology, and reproduction steps in [circuits/BASELINE_RESULTS.md](../../circuits/BASELINE_RESULTS.md). These are single-run desktop timings, not yet the repeated, device-tagged records F1.3's harness will produce, and only `poseidon-baseline` has a confirmed native iPhone 14 Pro run so far (via F1.1) — the other three circuits haven't been wired through mopro on-device yet. Re-baselining on real hardware once F1.3 exists is expected per PRD R5.
+
 ---
 
 ## 6. iOS Native Proving Plumbing (F1.1)

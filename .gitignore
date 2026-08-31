@@ -17,6 +17,7 @@ broadcast/
 *.sym
 *.ptau
 *.zkey
+*.wtns
 *_js/
 # exception: holder-app-ios zkeys are bundled runtime assets the app needs to
 # build/run, not transient proving scratch - small enough to check in, and
