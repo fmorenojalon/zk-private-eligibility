@@ -1,7 +1,7 @@
 # Phase 1 — Measurement Harness Specification
 
 **Satisfies:** F1.3, TR-16 through TR-19
-**Status:** Draft for review — no implementation exists yet.
+**Status: satisfied.** Collector, on-device emission, and analysis script are all implemented and confirmed end-to-end on the physical iPhone 14 Pro — see [measurement/README.md](../../measurement/README.md) for reproduction steps and real collected data. Two design points changed from this draft during implementation, both noted inline below: `analyze.py` ended up stdlib-only (§5), and the durability design (§3) got real validation, not just a description — see the note there.
 
 ---
 
@@ -72,6 +72,8 @@ Field notes:
 
 This durability requirement exists specifically so that a multi-hour measurement session (F1.4's full parameter sweep, and later Phase 5's sustained-load runs) can't silently drop data partway through.
 
+**Validated, not just designed.** During F1.3 implementation, the device's Local Network permission ended up denied for several runs in a row (a UI-test interruption monitor failed to catch iOS's one-time system permission alert) - every sync attempt in that window failed silently. All three records from those runs were still sitting in the on-device queue; the moment permission was corrected, the next sync flushed all of them together in one batch, none lost. Unplanned, but exactly the failure mode this design exists for.
+
 ---
 
 ## 4. Emission & Export Path
@@ -85,7 +87,7 @@ This durability requirement exists specifically so that a multi-hour measurement
 
 ## 5. Analysis Scripts
 
-`measurement/analyze` — Python (pandas), chosen for this project's data-analysis-shaped output (summary tables, later Phase 5 plots) over the JS/TS stack used elsewhere; a discretionary, low-stakes choice, easy to revisit since it only touches offline analysis, not any live service.
+`measurement/analyze` — Python, stdlib only (`json`, `statistics`) rather than pandas as originally drafted here: at this data volume (dozens to low hundreds of records per phase, not the large-N territory pandas is built for) a hard dependency bought nothing but install friction against TR-19's clean-checkout bar. Revisit if Phase 5's full complexity-dial sweep turns out to need real dataframe operations or plotting.
 
 Ingests all records in `measurement/records/`, groups by `(circuit.name, circuit.parameters)`, and computes mean/median/p95/stddev per metric, plus device/backend version breakdowns. Output: Markdown and CSV summary tables under `measurement/reports/`.
 

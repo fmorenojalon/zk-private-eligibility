@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	F1.3: the app syncs measurement records to the collector service
+	running on the Mac (measurement/collector, plain HTTP, port 3003) over
+	the local network (TR-22). Merged into the auto-generated Info.plist
+	per GENERATE_INFOPLIST_FILE=YES + INFOPLIST_FILE in project.pbxproj -
+	see Apple's documentation on combining the two.
+	-->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Syncs proof-generation measurement records to the collector service running on the same local network, for Phase 1 baseline performance data.</string>
+</dict>
+</plist>

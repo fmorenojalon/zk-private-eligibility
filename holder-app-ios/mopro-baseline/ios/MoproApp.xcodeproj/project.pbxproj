@@ -62,9 +62,22 @@
 		E11808952E5CBDB000B8B284 /* noir_multiplier2.vk */ = {isa = PBXFileReference; lastKnownFileType = file; path = noir_multiplier2.vk; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		ACB9BA8AF4A203A01845F346 /* Exceptions for "MoproApp" folder in "MoproApp" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 2A5991EB2CC7722900135402 /* MoproApp */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		2A5991EE2CC7722900135402 /* MoproApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				ACB9BA8AF4A203A01845F346 /* Exceptions for "MoproApp" folder in "MoproApp" target */,
+			);
 			path = MoproApp;
 			sourceTree = "<group>";
 		};
@@ -472,6 +485,7 @@
 				DEVELOPMENT_TEAM = S6UYUNBCXH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MoproApp/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -502,6 +516,7 @@
 				DEVELOPMENT_TEAM = S6UYUNBCXH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MoproApp/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

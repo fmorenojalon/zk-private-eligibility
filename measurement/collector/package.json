@@ -1,0 +1,10 @@
+{
+  "name": "zk-poc-measurement-collector",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ingests structured measurement records synced from the device (TR-16). See specs/phase-1/measurement-harness.md.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
