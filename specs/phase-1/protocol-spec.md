@@ -1,7 +1,7 @@
 # Phase 1 — Protocol Specification
 
 **Satisfies:** F1.5 · **Feeds:** Phase 2 (F2.1–F2.7) circuit implementation
-**Status:** Draft for review — no implementation exists yet.
+**Status: satisfied.** Every other Phase 1 requirement was built directly against this document without needing further design decisions — F1.1/F1.4's `poseidon-baseline` circuits implement exactly the arity-2/arity-10 commitment structure from §4.2 (and [BASELINE_RESULTS.md](../../circuits/BASELINE_RESULTS.md) empirically confirms the arity-cost reasoning behind the Option-A-over-5+5-split correction); F1.4's `merkle-baseline` implements the boolean-constrained inclusion construction §5.3 calls for; F1.2's Groth16Verifier and F1.4's `eddsa-baseline` reflect §3's membership-only attestation decision (no in-circuit signature check, but the primitive still measured standalone). Nothing here has needed revision since the arity fix ([git history](../../TOOLCHAIN.md), commit `0d010fe`).
 
 > This document is the design contract for the credential, its predicates, the epoch/revocation model, the nullifier, and the threat model. Per the Phase 1 acceptance criterion, it must be complete enough to implement Phase 2 against without further design decisions. Items that are genuinely deferred are called out explicitly in §8, not left implicit.
 
