@@ -25,7 +25,7 @@ F1.3 (TR-16–TR-19). See [specs/phase-1/measurement-harness.md](../specs/phase-
      -allowProvisioningUpdates \
      -only-testing:MoproAppUITests/MoproAppUITests/testCircomProveVerify
    ```
-   This launches the app, taps Prove → Verify → Sync automatically, and asserts the sync completed — see [TOOLCHAIN.md §8](../TOOLCHAIN.md#8-building-an-f11-style-mopro-app-for-a-physical-device-gotchas) for the underlying build/signing/permission setup this depends on.
+   This launches the app, taps Prove → Verify → Sync automatically, and asserts the sync completed — see [TOOLCHAIN.md §9](../TOOLCHAIN.md#9-building-an-f11-style-mopro-app-for-a-physical-device-gotchas) for the underlying build/signing/permission setup this depends on.
 
    **First run on a fresh device/install:** iOS will prompt for Local Network permission the first time the app tries to reach the collector. If a UI test's interruption monitor doesn't catch that system alert in time, the permission gets recorded as denied and iOS won't ask again — check Settings → Privacy & Security → Local Network → MoproApp and toggle it on manually if sync keeps timing out with no error on either side.
 
