@@ -106,9 +106,14 @@ Naive revocation publishes revoked credential identifiers; proving you are absen
 
 Enforcing a cumulative cap requires per-investor state; unlinkability forbids correlating presentations. These requirements are in direct conflict.
 
-**Approach:** scope-bound nullifiers derived from (holder secret, epoch, scope). Double-use within a scope is detectable; presentations across scopes remain uncorrelated.
+**Approach:** scope-bound nullifiers derived from (holder secret, epoch, scope). **Scope identifies a specific offering** — the tokenized investment product a holder is proving eligibility for (§5's real-estate offering, for instance). Each presentation to a given offering produces a nullifier unique to that (holder, offering, epoch) combination; presenting to a *different* offering produces an unrelated one.
 
-**Accepted cost:** cumulative caps *across* scopes cannot be enforced without linkage. This limitation is stated explicitly in the output rather than papered over.
+This solves two problems at once:
+
+- **Reuse within one offering becomes detectable.** Without it, nothing stops a holder from presenting eligibility to the same offering repeatedly — the investment ceiling (P11) only bounds a *single* presentation, not how many times that presentation can be repeated. If Alice presents to an offering twice, her second nullifier collides with her first and is rejected on-chain (PR-7, TR-13). Charlie, a different investor presenting to that *same* offering, produces his own independent nullifier — it depends on his own holder secret — so his activity is entirely unaffected by Alice's.
+- **Presentations to different offerings stay unlinkable.** Alice investing in two unrelated offerings produces two nullifiers with no discoverable relationship to each other or to her identity (PR-6, PR-7) — this is the mechanism behind §5's Beat 2.
+
+**Accepted cost:** cumulative caps *across* offerings cannot be enforced without linkage. This limitation is stated explicitly in the output rather than papered over.
 
 ---
 
@@ -116,13 +121,13 @@ Enforcing a cumulative cap requires per-investor state; unlinkability forbids co
 
 The scenario the entire system exists to demonstrate, in three beats.
 
-**Setup.** *Ana* holds a credential issued by **Banco Demo** attesting her financial standing. **Inmobiliaria Tokenizada** offers a tokenized Spanish commercial real-estate investment restricted to EU sophisticated investors in permitted jurisdictions.
+**Setup.** *Alice* holds a credential issued by **Banco Demo** attesting her financial standing. **Inmobiliaria Tokenizada** issues a tokenized Spanish commercial real-estate offering restricted to EU sophisticated investors in permitted jurisdictions.
 
-**Beat 1 — Privacy.** Ana opens the offering, is asked to prove eligibility, and her phone generates a proof on-device. The platform verifies it on-chain and grants access. *The platform learns only that she is eligible and a scope-bound nullifier — not her income, net worth, employment, jurisdiction detail, identity, or which credential she holds.*
+**Beat 1 — Privacy.** Alice opens the offering, is asked to prove eligibility, and her phone generates a proof on-device. The platform verifies it on-chain and grants access. *The platform learns only that she is eligible and a scope-bound nullifier — not her income, net worth, employment, jurisdiction detail, identity, or which credential she holds.*
 
-**Beat 2 — Unlinkability.** Ana invests in a second, unrelated offering using the same credential. *The two presentations cannot be correlated by the platform or by any chain observer.*
+**Beat 2 — Unlinkability.** Alice invests in a second, unrelated offering using the same credential. *The two presentations cannot be correlated by the platform or by any chain observer* — each offering is its own scope (§4.2), so the two nullifiers are cryptographically unrelated to each other and to Alice's identity.
 
-**Beat 3 — Revocation.** Banco Demo revokes Ana's credential. At the next epoch, the same credential fails verification and access is refused.
+**Beat 3 — Revocation.** Banco Demo revokes Alice's credential. At the next epoch, the same credential fails verification and access is refused.
 
 **Why these three.** They are the three properties that make the system worth building. Any one alone is unremarkable; together they constitute a working privacy-preserving compliance flow.
 
@@ -145,7 +150,7 @@ Five flows define the system's behaviour.
 ### Flow 2 — Eligibility Presentation (core flow)
 
 1. Holder browses an offering on the platform.
-2. Platform issues a presentation request specifying scope, epoch, and intended investment amount.
+2. Platform issues a presentation request specifying scope (this offering, uniquely — §4.2), epoch, and intended investment amount.
 3. Holder app displays *what will be proven and what will be revealed*, and requests consent.
 4. Holder app generates the proof **entirely on-device**.
 5. Holder app returns proof and public inputs to the platform.
@@ -170,7 +175,7 @@ Identical to Flow 2 against a different offering. The resulting nullifier differ
 
 ### Flow 5 — Refusal (ineligible)
 
-A holder whose attributes fail the regime's predicates cannot produce a valid proof. The platform refuses access and *learns only that the proof was invalid* — not which condition failed.
+Bob, whose income and portfolio both fall short of the EU regime's thresholds, attempts to present eligibility for the same real-estate offering Alice invested in. His device cannot produce a satisfying witness — no combination of private values makes the circuit's constraints hold, so no proof exists to generate. The platform refuses access and *learns only that the proof was invalid* — not which condition failed.
 
 ---
 
@@ -415,7 +420,7 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 
 **Deliverable D3 — Working System:** iOS holder app, platform frontend and backend, all five flows operating, the three-beat demo runnable end-to-end.
 
-**Acceptance:** an observer can watch Ana gain access privately, invest again unlinkably, and be refused after revocation — without the platform ever receiving an attribute value.
+**Acceptance:** an observer can watch Alice gain access privately, invest again unlinkably, and be refused after revocation — without the platform ever receiving an attribute value.
 
 ---
 

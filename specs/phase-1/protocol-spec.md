@@ -140,9 +140,22 @@ nullifier = Poseidon(holder_secret, epoch, scope)
 ```
 
 - `epoch`: the current epoch, public input, matches the epoch of `validSetRoot` used in the same proof.
-- `scope`: a field element uniquely identifying the presentation context, chosen by the platform backend and included in the presentation request (Flow 2, step 2) — e.g. `Poseidon(offering_id)`. Two different offerings ⇒ two different `scope` values ⇒ unrelated nullifiers, even for the same `holder_secret` and `epoch` (PR-6, PR-7).
-- **Replay check:** on-chain `NullifierRegistry` rejects any `nullifier` it has already recorded (TR-13). Because `scope` is baked into the nullifier itself, no separate scope-tracking is needed on-chain — the replay check is a flat "have I seen this exact value" lookup, which is naturally scope-bound by construction.
-- **Cross-scope linkage (L3):** explicitly not solvable by this construction — the same `holder_secret` across two different `scope`s produces unrelated nullifiers, so cumulative caps across scopes cannot be enforced without additional linkage. Stated in PRD §4.2 / PR-8 and repeated here since it's directly a nullifier-design consequence.
+- `scope`: a field element uniquely identifying the presentation context — in practice, a specific offering (PRD §5's real-estate offering is the running example) — chosen by the platform backend and included in the presentation request (Flow 2, step 2), e.g. `Poseidon(offering_id)`.
+
+**Why scope-bound, not a single nullifier per epoch.** Consider the alternative: `nullifier = Poseidon(holder_secret, epoch)`, dropping `scope` entirely. This would give a holder exactly one valid presentation per epoch, full stop — a second attempt at *any other* offering in the same epoch would collide with the first and be rejected as a replay, even though it's a legitimate, unrelated use. It would also mean every presentation that holder makes within an epoch emits the *same* nullifier value everywhere, trivially linking all of it — collapsing PR-6's unlinkability guarantee into a static per-epoch pseudonym. Binding `scope` into the nullifier fixes both problems: reuse-prevention applies *within* one offering, not globally, and different offerings ⇒ different, unrelated-looking nullifier values (PR-6, PR-7), even for the same holder in the same epoch.
+
+**Who enforces this, and how — not the issuer.** The valid-set tree (§6 above) and the nullifier record are separate structures with separate owners, easy to conflate but functionally unrelated. The issuer maintains the valid-set tree (issuance, revocation, root publication) and has **no role in nullifier handling at all**. Reuse-prevention is enforced entirely on-chain, downstream of the issuer:
+
+1. The holder generates the proof — `nullifier` is one of its public outputs — and hands it to the *platform* (Flow 2, step 5).
+2. The platform submits it in a transaction to the chain (Flow 2, step 6) — the platform submits, never the holder (PRD §9.3).
+3. A registry contract (TR-12) verifies the proof and, if it holds, checks whether that exact `nullifier` value has already been recorded in its consumed-nullifier set. This is a flat "have I seen this value" lookup, not a tree — `scope` is already baked into the value itself, so no separate scope-tracking structure is needed on-chain.
+4. If new, it's recorded as consumed in the same transaction as verification (TR-13); if already present, the transaction is rejected. Both happen atomically — there is no window between "verify" and "record" for a second, colliding presentation to slip through.
+
+The mechanism specified here is *what* gets checked and recorded, and that it happens atomically — not the contract's internal implementation, which is Phase 3 work and doesn't exist yet.
+
+**Replay check, concretely:** two presentations by Alice to the same offering produce the same nullifier — the second is rejected (PR-7, TR-13). A presentation by Charlie to that *same* offering produces a different nullifier, since it depends on his own `holder_secret` — his activity is entirely unaffected by Alice's, even though they're using the same scope.
+
+**Cross-scope linkage (L3):** explicitly not solvable by this construction — the same `holder_secret` across two different `scope`s produces unrelated nullifiers, so cumulative caps across scopes cannot be enforced without additional linkage. Stated in PRD §4.2 / PR-8 and repeated here since it's directly a nullifier-design consequence.
 
 ---
 
