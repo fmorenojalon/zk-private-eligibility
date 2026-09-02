@@ -2,8 +2,6 @@
 
 ## A greenfield ZK credential system, proven on-device, verified on-chain
 
-**Owner:** Fernando Moreno · **Version:** 4.0 (circom-only MVP) 
-**Type:** Solo applied-research PoC
 
 > This is a **requirements specification**, not an implementation guide. It defines *what* must be true, not *how* to build it.
 > 
