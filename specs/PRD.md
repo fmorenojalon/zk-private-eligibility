@@ -341,19 +341,19 @@ A holder whose attributes fail the regime's predicates cannot produce a valid pr
 
 Five phases, each ending in a demonstrable deliverable. Requirements only — sequencing within a phase is left open.
 
-### Phase 1 — Foundations & Feasibility · ~4 weeks
+### Phase 1 — Foundations & Feasibility · ~4 weeks — done
 
 **Objective:** prove the toolchain works end-to-end and establish measurement capability.
 
 **Requirements**
 
-- F1.1 A circom circuit SHALL prove on the iPhone 14 Pro natively.
-- F1.2 A generated verifier SHALL verify a real proof on the local chain, and reject a tampered one.
-- F1.3 The measurement harness SHALL emit structured records satisfying TR-16 to TR-19.
-- F1.4 Baseline costs SHALL be established for Poseidon, Merkle inclusion at three depths, range comparison, and EdDSA verification.
-- F1.5 A protocol specification SHALL define the credential schema, all predicates in circuit terms, the epoch and revocation model, the nullifier construction, and the threat model.
+- F1.1 A circom circuit SHALL prove on the iPhone 14 Pro natively. — done
+- F1.2 A generated verifier SHALL verify a real proof on the local chain, and reject a tampered one. — done
+- F1.3 The measurement harness SHALL emit structured records satisfying TR-16 to TR-19. — done
+- F1.4 Baseline costs SHALL be established for Poseidon, Merkle inclusion at three depths, range comparison, and EdDSA verification. — done
+- F1.5 A protocol specification SHALL define the credential schema, all predicates in circuit terms, the epoch and revocation model, the nullifier construction, and the threat model. — done
 
-**Deliverable D0 — Feasibility Baseline:** working toolchain, on-device proof, on-chain verification, measurement harness, baseline primitive costs, protocol specification.
+**Deliverable D0 — Feasibility Baseline:** working toolchain, on-device proof, on-chain verification, measurement harness, baseline primitive costs, protocol specification. — done
 
 **Acceptance:** a proof generated on the iPhone verifies on the local chain; the harness produces reproducible records; the specification is complete enough to implement against without further design decisions.
 
@@ -442,13 +442,13 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 
 ### Summary
 
-| Phase | Deliverable | Duration | Cumulative |
-| --- | --- | --- | --- |
-| 1 | D0 — Feasibility Baseline | ~4 wks | ~1 mo |
-| 2 | D1 — Eligibility Circuit Suite | ~6 wks | ~2.3 mo |
-| 3 | D2 — Verification Infrastructure | ~5 wks | ~3.5 mo |
-| 4 | D3 — Working System | ~7 wks | ~5.1 mo |
-| 5 | D4 — Synthesis Report | ~5 wks | ~6.3 mo |
+| Phase | Deliverable | Duration | Cumulative | Status |
+| --- | --- | --- | --- | --- |
+| 1 | D0 — Feasibility Baseline | ~4 wks | ~1 mo | done |
+| 2 | D1 — Eligibility Circuit Suite | ~6 wks | ~2.3 mo | |
+| 3 | D2 — Verification Infrastructure | ~5 wks | ~3.5 mo | |
+| 4 | D3 — Working System | ~7 wks | ~5.1 mo | |
+| 5 | D4 — Synthesis Report | ~5 wks | ~6.3 mo | |
 
 **Scope reduction levers, in order of preference:**
 
