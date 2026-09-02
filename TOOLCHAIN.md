@@ -56,32 +56,9 @@ circom --version  # circom compiler 2.2.3
 cd circuits && npx snarkjs --version   # snarkjs@0.7.6
 ```
 
-## 7. Why mopro? Rationale for the native-binding stack
+## 7. Why the iOS steps look different from desktop
 
-Desktop (§1–§6) and iOS (§8) need fundamentally different proving stacks, not just different install commands. Worth understanding why before the §8/§9 steps read as arbitrary.
-
-**What proving requires, mechanically.** Two things: (1) witness generation — execute the circuit's arithmetic to compute every wire value satisfying the constraints; (2) proving — run Groth16 (elliptic-curve scalar multiplications, FFTs) over that witness plus the proving key. Both are just computation; what differs is what's allowed to run that computation.
-
-> **A note on "witness":** this term gets reused across the ZK/blockchain space for genuinely different things, worth pinning down. Here (circom/snarkjs/Groth16), a **witness** is the complete assignment of values to *every* signal in the circuit — private inputs, public inputs, and every intermediate computed wire, not just "the private data." It's a concrete file (`witness.wtns`), produced from the raw inputs by the circuit's compiled witness calculator, and it's what the prover actually consumes to build a proof — see `circuits/BASELINE_RESULTS.md` for the `witness_gen_ms` timings this step produces. Elsewhere: Cardano uses "witness" for a transaction's signature/authorization data — an unrelated usage. Midnight's Compact language uses "witness" for the off-chain TypeScript functions that *supply* private data to a circuit (closer to writing an `input.json` here, but as executable code rather than a static file) — the full internal assignment vector is built later, inside their proof server, and isn't what their docs call "witness."
-
-**Desktop never compiles an app.** `circom`, `node`, `snarkjs` run directly as command-line tools. `circom` compiles the circuit to `circuit.wasm`; `node` executes that WASM in its built-in runtime for witness generation; `snarkjs` (plain JS, using `ffjavascript` for field/curve math) does the proving. Node.js is already a native macOS program with a WASM runtime and JS engine built in — nothing needs packaging or shipping.
-
-**iOS ships one compiled, sandboxed binary — no scripts, no Node.js inside it.** Whatever the app does at runtime has to already be compiled machine code linked into that binary before it ships. So the same two jobs need a completely different path:
-- **Witness generation:** instead of interpreting the circuit's WASM at runtime (too slow on a phone), mopro's `rust-witness` component transpiles that WASM into native Rust/C code *at build time* (via `w2c2`, a WASM→C compiler) — producing a real compiled static library, not an interpreter. This is the `libcircuit.a` referenced in §9's underscore-naming gotcha.
-- **Proving:** instead of snarkjs's JS implementation, mopro uses `arkworks`, a mature Rust cryptography library, compiled natively for `aarch64-apple-ios`.
-
-Both end up as real ARM64 machine code inside the app binary — that's "native."
-
-**"Native bindings" ≠ "Swift bindings."** The native part is the compiled Rust library. But Swift can't call Rust functions directly (different calling conventions, different memory models) — a bridge is needed. Mopro generates that bridge with **UniFFI** (Mozilla's cross-language binding generator): it reads annotated Rust functions and emits the Swift-side wrapper code that calls into the compiled Rust library through a C-compatible interface. That generated wrapper is `MoproiOSBindings/mopro.swift` — the `generateCircomProof`/`verifyCircomProof` functions used in `ContentView.swift`. So: *native binding* = compiled Rust + the generated cross-language glue, for whichever target platform; *Swift bindings* = specifically the Swift half of that (same UniFFI generator produces Kotlin for Android, etc. — one Rust core, many generated language-specific skins).
-
-**What mopro actually is.** Not the prover itself — arkworks and rust-witness do the real cryptographic work. Mopro is the orchestration layer: wraps several proving backends (circom, halo2, noir, gnark) behind one Rust API, drives `rust-witness`'s WASM→native transpilation, runs UniFFI to generate per-platform bindings, and scaffolds the whole Xcode project (`mopro init/build/create`) so cross-compilation targets, module maps, and xcframework packaging aren't hand-configured. We hit real friction even *with* this automation (§9) — doing it by hand would mean re-deriving most of what mopro already does.
-
-**Could this be built without mopro?** Yes, in principle — the underlying constraint (some compiled, native way to run Groth16 proving on iOS, exposed to Swift) is real and unavoidable, but mopro specifically is a choice, not a hard requirement:
-- Hand-roll a thin Rust crate calling arkworks directly, wire up UniFFI (or Apple's native C-interop) manually, hand-configure the Xcode build — essentially rebuilding a slice of mopro ourselves.
-- Skip Rust entirely and embed a WASM runtime in the app (Wasmer/Wasmtime, or JavaScriptCore running snarkjs-equivalent logic) — avoids Rust/Cargo, but gives up the performance win `rust-witness`'s native transpilation specifically exists to capture.
-- Link a C++ prover (e.g. `rapidsnark`) directly via Xcode's native C++ interop, no Rust at all — still real cross-compilation/linking work mopro currently absorbs.
-
-PRD §9.2 names mopro deliberately, and R3 ("no novel cryptography, use existing libraries") is the explicit reasoning — avoid reinventing this. Rust/Cargo showing up as a dependency (§8 below) is the direct consequence: mopro's core is Rust, so anything touching it needs the Rust toolchain present. The chain: Cargo → mopro-cli (`cargo install`) → the Rust crate mopro scaffolds → `cargo build --target aarch64-apple-ios` (invoked internally by `mopro build`) → the compiled xcframework → Xcode links it into the Swift app.
+Short version: an iOS app is one compiled, sandboxed binary with no Node.js or script-execution environment inside it, so proving on-device needs a different path than the desktop `circom`/`snarkjs` command-line flow above (§1–§6) — native code (Rust, via mopro) instead of interpreted WASM+JS. Full rationale — why native bindings are needed at all, what "native binding" vs. "Swift bindings" actually means, what mopro's role is, whether this could be built without it, and a note on "witness" terminology across the ZK/blockchain space — now lives in [`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md), since it's about *why the stack looks this way*, not *how to install it*. This file stays focused on exact versions and commands.
 
 ## 8. iOS toolchain
 
