@@ -16,7 +16,7 @@
 
 **Why now, and why greenfield.** RWA tokenization platforms are building new credential infrastructure from scratch. There is no legacy signature format to inherit, so ZK-friendly primitives can be selected at issuance — which is the correct engineering decision, not a shortcut. Every architectural layer is designed from zero: credential schema, predicate circuits, revocation, unlinkability, on-chain verification.
 
-**Scope discipline.** The MVP is deliberately narrowed to **one proving library (circom), one device (iPhone 14 Pro), one machine (MacBook Pro 2024)**. Multi-library comparison was cut to reduce abandonment risk — most concepts in these stacks are new to the author, and breadth is the enemy of completion. Extension to a second library is a post-MVP option, not a commitment.
+**Scope discipline.** The MVP is deliberately narrowed to **one proving library (circom), one device (iPhone 14 Pro), one machine (MacBook Pro 2024)**. Extension to a second library is a post-MVP option.
 
 **The research question.** *Can a greenfield, unlinkable, revocable eligibility credential be proven entirely on a four-year-old consumer phone and verified on-chain — and what does it cost as predicate complexity scales?*
 
