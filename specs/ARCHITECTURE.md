@@ -1,6 +1,6 @@
 # Architecture & Stack Rationale
 
-This document explains *why* the project's technology choices are what they are, and how the pieces fit together — not *what must be true* (that's [`PRD.md`](PRD.md)), not the cryptographic protocol design (that's [`credential-protocol.md`](credential-protocol.md)), and not install commands (that's [`../TOOLCHAIN.md`](../TOOLCHAIN.md)). Read this when the question is "why does the codebase look like this," not "what do I run" or "what predicate does this circuit implement."
+This document explains *why* the project's technology choices are what they are, and how the pieces fit together. Read this when the question is "why does the codebase look like this." For what must be true, see [`PRD.md`](PRD.md); for the cryptographic protocol design, see [`credential-protocol.md`](credential-protocol.md); for install commands, see [`../TOOLCHAIN.md`](../TOOLCHAIN.md).
 
 ## Document map
 
