@@ -1,2 +1,2 @@
 circuit,device,n,parameters,peak_memory_mb_mean,peak_memory_mb_median,peak_memory_mb_p95,peak_memory_mb_stddev,proof_size_bytes_mean,proof_size_bytes_median,proof_size_bytes_p95,proof_size_bytes_stddev,proving_ms_mean,proving_ms_median,proving_ms_p95,proving_ms_stddev,verification_ms_mean,verification_ms_median,verification_ms_p95,verification_ms_stddev,witness_gen_ms_mean,witness_gen_ms_median,witness_gen_ms_p95,witness_gen_ms_stddev
-poseidon-baseline,iPhone15,2,3,arity=2,106,106,106.0,0.0,256,256,256.0,0.0,34.7,36,36.0,2.3,12,12,12.9,1.0,0,0,0.0,0.0
+poseidon-baseline,iPhone15,2,5,arity=2,94.4,106,106.0,25.9,256,256,256.0,0.0,34,36,36.8,3.4,12.8,13,14.0,1.3,0,0,0.0,0.0
