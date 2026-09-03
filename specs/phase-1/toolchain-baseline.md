@@ -67,10 +67,10 @@ Four standalone circuits, no credential logic — pure primitive measurement:
 
 | Circuit | Parameters tested | Purpose |
 | --- | --- | --- |
-| `poseidon-baseline` | arity 2, arity 10 | matches the two Poseidon arities used in the credential commitment ([protocol-spec.md §4.2](protocol-spec.md#42-commitment-structure)) |
+| `poseidon-baseline` | arity 2, arity 10 | matches the two Poseidon arities used in the credential commitment ([credential-protocol.md §4.2](../credential-protocol.md#42-commitment-structure)) |
 | `merkle-baseline` | depth ∈ {16, 20, 32} | matches TR-6's complexity dial; reused directly for P5/P6/P8 in Phase 2 |
 | `range-baseline` | single comparator over a 64-bit value | matches the income/net-worth/portfolio field sizes used in P1/P2/P9 |
-| `eddsa-baseline` | single EdDSA-Poseidon signature verification | standalone reference number per F1.4 — **not** used in the Phase 2 credential circuit per [protocol-spec.md §3](protocol-spec.md#3-issuer-attestation-membership-only-design-decision), but still required baseline data |
+| `eddsa-baseline` | single EdDSA-Poseidon signature verification | standalone reference number per F1.4 — **not** used in the Phase 2 credential circuit per [credential-protocol.md §3](../credential-protocol.md#3-issuer-attestation-membership-only-design-decision), but still required baseline data |
 
 **Per circuit, per parameter set, recorded:**
 - Constraint count (`circom --r1cs`)
@@ -135,4 +135,4 @@ This is the acceptance test for F1.2 directly — no additional interpretation n
 | F1.1 | §6 — proof generated on physical iPhone 14 Pro |
 | F1.2 | §7 — genuine proof accepted, tampered proof/inputs rejected on Anvil |
 | F1.4 | §5 — four baseline circuits measured across their parameter sets |
-| D0 deliverable | §5 + §6 + §7 combined, plus [protocol-spec.md](protocol-spec.md) (F1.5) and [measurement-harness.md](measurement-harness.md) (F1.3) |
+| D0 deliverable | §5 + §6 + §7 combined, plus [credential-protocol.md](../credential-protocol.md) (F1.5) and [measurement-harness.md](measurement-harness.md) (F1.3) |

@@ -1,6 +1,6 @@
 # Contracts
 
-Foundry project for on-chain verification (F1.2 baseline; Phase 3 will add the registry contracts per specs/phase-1/protocol-spec.md).
+Foundry project for on-chain verification (F1.2 baseline; Phase 3 will add the registry contracts per specs/credential-protocol.md).
 
 ## `Groth16Verifier.sol`
 

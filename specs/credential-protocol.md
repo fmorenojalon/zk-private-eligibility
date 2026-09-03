@@ -1,7 +1,7 @@
-# Phase 1 — Protocol Specification
+# Credential Protocol
 
-**Satisfies:** F1.5 · **Feeds:** Phase 2 (F2.1–F2.7) circuit implementation
-**Status: satisfied.** Every other Phase 1 requirement was built directly against this document without needing further design decisions — F1.1/F1.4's `poseidon-baseline` circuits implement exactly the arity-2/arity-10 commitment structure from §4.2 (and [BASELINE_RESULTS.md](../../circuits/BASELINE_RESULTS.md) empirically confirms the arity-cost reasoning behind the Option-A-over-5+5-split correction); F1.4's `merkle-baseline` implements the boolean-constrained inclusion construction §5.3 calls for; F1.2's Groth16Verifier and F1.4's `eddsa-baseline` reflect §3's membership-only attestation decision (no in-circuit signature check, but the primitive still measured standalone). Nothing here has needed revision since the arity fix ([git history](../../TOOLCHAIN.md), commit `0d010fe`).
+**Delivered by:** F1.5 (Phase 1) · **Feeds:** Phase 2 (F2.1–F2.7) circuit implementation, and every later phase that touches the credential, predicates, or nullifier
+**Status: satisfied.** Every other Phase 1 requirement was built directly against this document without needing further design decisions — F1.1/F1.4's `poseidon-baseline` circuits implement exactly the arity-2/arity-10 commitment structure from §4.2 (and [BASELINE_RESULTS.md](../circuits/BASELINE_RESULTS.md) empirically confirms the arity-cost reasoning behind the Option-A-over-5+5-split correction); F1.4's `merkle-baseline` implements the boolean-constrained inclusion construction §5.3 calls for; F1.2's Groth16Verifier and F1.4's `eddsa-baseline` reflect §3's membership-only attestation decision (no in-circuit signature check, but the primitive still measured standalone). Nothing here has needed revision since the arity fix ([git history](../TOOLCHAIN.md), commit `0d010fe`).
 
 > This document is the design contract for the credential, its predicates, the epoch/revocation model, the nullifier, and the threat model. Per the Phase 1 acceptance criterion, it must be complete enough to implement Phase 2 against without further design decisions. Items that are genuinely deferred are called out explicitly in §8, not left implicit.
 
@@ -9,7 +9,7 @@
 
 ## 1. Scope
 
-Covers the full protocol design — not just the primitives Phase 1 measures. Phase 2 implements what's specified here; Phase 1 only builds standalone baseline circuits for the four primitives in [toolchain-baseline.md](toolchain-baseline.md).
+Covers the full protocol design — not just the primitives Phase 1 measures. Phase 2 implements what's specified here; Phase 1 only builds standalone baseline circuits for the four primitives in [phase-1/toolchain-baseline.md](phase-1/toolchain-baseline.md).
 
 Reflects the PRD v4.1 scope: EU regime only, 2-of-2 threshold (P4), predicates P1–P10, single-tree credential (§3.1 Option A), no in-circuit issuer-signature verification (decided below).
 
@@ -71,7 +71,7 @@ attr_hash = Poseidon(income, portfolio_value, financial_sector_months, executive
 leaf      = Poseidon(holder_secret, attr_hash)
 ```
 
-`attr_hash` is a single 10-input Poseidon call — circomlib (pinned commit, [toolchain-baseline.md §2](toolchain-baseline.md#2-pinned-toolchain-versions)) ships reference-derived round constants for Poseidon state widths up to `t=17` (i.e. up to 16 inputs), so arity 10 is exactly as standard and audited as arity 2; there is no benefit to splitting it into smaller groups, and doing so would cost more constraints (each additional Poseidon call pays its own full-round overhead) for no robustness gain.
+`attr_hash` is a single 10-input Poseidon call — circomlib (pinned commit, [phase-1/toolchain-baseline.md §2](phase-1/toolchain-baseline.md#2-pinned-toolchain-versions)) ships reference-derived round constants for Poseidon state widths up to `t=17` (i.e. up to 16 inputs), so arity 10 is exactly as standard and audited as arity 2; there is no benefit to splitting it into smaller groups, and doing so would cost more constraints (each additional Poseidon call pays its own full-round overhead) for no robustness gain.
 
 The two-*step* structure itself (`attr_hash`, then `leaf`) is load-bearing, not arity-driven: at issuance the issuer receives the raw attribute values to verify them out-of-band (Flow 1) and must be able to independently recompute `attr_hash` to confirm the holder isn't misrepresenting what's bound into the credential — but per PR-5 the issuer must never learn `holder_secret`. Only the holder, who alone holds the secret, can compute `leaf`. The holder computes it locally and sends the issuer the opaque `leaf` value (a hash, not a secret preimage) for insertion into the tree.
 

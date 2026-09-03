@@ -1,13 +1,13 @@
 # Architecture & Stack Rationale
 
-This document explains *why* the project's technology choices are what they are, and how the pieces fit together — not *what must be true* (that's [`PRD.md`](PRD.md)), not the cryptographic protocol design (that's [`phase-1/protocol-spec.md`](phase-1/protocol-spec.md)), and not install commands (that's [`../TOOLCHAIN.md`](../TOOLCHAIN.md)). Read this when the question is "why does the codebase look like this," not "what do I run" or "what predicate does this circuit implement."
+This document explains *why* the project's technology choices are what they are, and how the pieces fit together — not *what must be true* (that's [`PRD.md`](PRD.md)), not the cryptographic protocol design (that's [`credential-protocol.md`](credential-protocol.md)), and not install commands (that's [`../TOOLCHAIN.md`](../TOOLCHAIN.md)). Read this when the question is "why does the codebase look like this," not "what do I run" or "what predicate does this circuit implement."
 
 ## Document map
 
 | Question | Where to look |
 | --- | --- |
 | What must the system do? | [`PRD.md`](PRD.md) |
-| What's the credential schema, predicates, nullifier, threat model? | [`phase-1/protocol-spec.md`](phase-1/protocol-spec.md) |
+| What's the credential schema, predicates, nullifier, threat model? | [`credential-protocol.md`](credential-protocol.md) |
 | Why this technology, at each layer? | This document |
 | Exact versions, install commands, build gotchas | [`../TOOLCHAIN.md`](../TOOLCHAIN.md) |
 | Phase 1 requirements and acceptance status | [`phase-1/toolchain-baseline.md`](phase-1/toolchain-baseline.md), [`phase-1/measurement-harness.md`](phase-1/measurement-harness.md) |
@@ -29,7 +29,7 @@ Per PRD §9.1 — everything runs on the MacBook Pro 2024 except the holder app,
 
 What's actually built vs. still planned is tracked by phase in PRD §10, not duplicated here — this table describes the topology and stack choices, not build progress.
 
-Trust boundaries (what crosses which boundary, and what never does) are defined in `protocol-spec.md` §8.3 and PRD §9.4 — not repeated here to avoid drift between two copies of the same table.
+Trust boundaries (what crosses which boundary, and what never does) are defined in `credential-protocol.md` §8.3 and PRD §9.4 — not repeated here to avoid drift between two copies of the same table.
 
 ---
 
