@@ -136,9 +136,9 @@ Five flows define the system's behaviour.
 
 1. Holder requests a credential from the issuer, submitting attribute values.
 2. Issuer verifies attributes out-of-band *(simulated — see §11)*.
-3. Issuer computes a commitment binding the attributes to a holder-controlled secret, signs it, and inserts it into the valid-set tree.
+3. Issuer computes a commitment binding the attributes to a holder-controlled secret and inserts it into the valid-set tree (access-controlled to the issuer's address — L10).
 4. Issuer publishes the updated root for the current epoch.
-5. Holder receives the credential, signature, and Merkle path; stores them on-device.
+5. Holder receives the credential and Merkle path; stores them on-device.
 
 **Property:** the holder secret is generated on-device and never leaves it.
 
@@ -224,7 +224,7 @@ Bob, whose income and portfolio both fall short of the EU regime's thresholds, a
 
 - **TR-1** All circuits SHALL be authored in circom and proven with Groth16 over BN254.
 - **TR-2** Commitments and nullifiers SHALL use Poseidon.
-- **TR-3** Issuer signatures SHALL use EdDSA over Baby Jubjub.
+- **TR-3** — *Retired.* Called for issuer signatures via EdDSA over Baby Jubjub; this PoC relies on registry access control instead (leaf and root writes both restricted to the issuer's on-chain address) rather than an additional signature — see L10.
 - **TR-4** Set membership SHALL use Merkle inclusion proofs; set non-membership SHALL use a documented construction.
 - **TR-5** Circuit-specific trusted setup SHALL use a public Powers-of-Tau ceremony file; setup time and artifact size SHALL be recorded.
 - **TR-6** Circuits SHALL be parameterised over Merkle depth and predicate count to support the complexity dial.
@@ -365,8 +365,8 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 
 **Requirements**
 
-- F2.1 The credential SHALL bind all §2 attributes to a holder secret via a Poseidon commitment, signed by the issuer (TR-2, TR-3).
-- F2.2 Circuits SHALL implement P1–P10.
+- F2.1 The credential SHALL bind all §2 attributes to a holder secret via a Poseidon commitment (TR-2).
+- F2.2 Circuits SHALL implement P1–P10 (P9 retired — §3).
 - F2.3 The EU 2-of-3 regime SHALL be satisfiable from a single credential (PR-13).
 - F2.4 The threshold-of-N predicate (P4) SHALL be implemented as a first-class construct.
 - F2.5 — *Retired,* along with P9 (§3): the investment ceiling requirement no longer applies now that scope is sophisticated/accredited investors only.
@@ -387,7 +387,7 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 
 - F3.1 Registry contracts SHALL maintain all roots and consumed nullifiers per TR-12.
 - F3.2 Nullifier replay within a scope SHALL be rejected on-chain (TR-13).
-- F3.3 The issuer service SHALL expose issuance and revocation over local HTTP, and SHALL publish roots to the chain.
+- F3.3 The issuer service SHALL expose issuance and revocation over local HTTP, and SHALL publish roots to the chain; both leaf insertion and root publication SHALL be restricted to the issuer's on-chain address (access control — TR-3 retired, L10).
 - F3.4 The issuer SHALL maintain the valid-set tree with epoch rotation per §4.1.
 - F3.5 Revocation SHALL cause proof failure from the following epoch (PR-10) without holder cooperation (PR-9).
 - F3.6 Per-offering eligibility policy SHALL be configurable on-chain (PR-20).
@@ -470,6 +470,7 @@ To be stated plainly in all output.
 - **L7 — EU regime is 2-of-2, not 2-of-3.** Condition (c) (market activity, P5) was dropped as the most expensive sub-condition. The threshold predicate is built as a generic M-of-N construct (F2.4), so this is a configuration limit rather than an architectural one — but the MVP result characterises 2-of-2, not the full regulation.
 - **L8 — Spanish regime not implemented.** Retained in §2.1 as regulatory reference only. Its unique predicate, P3 (advisory-contract membership), is consequently out of scope too.
 - **L9 — Merkle trees have fixed capacity, set by depth at deploy time.** Every tree in this system (valid-set, jurisdiction, sanctions) holds at most `2^depth` leaves; exceeding it means a full rebuild at greater depth, not an incremental add. This is cheaper to absorb than it sounds — F1.4's baseline shows constraint cost scales linearly with depth while capacity scales exponentially (depth 32 costs ~2× depth 16's constraints for 65,536× the capacity), so depth 20 alone (Phase 2's default) already covers over a million entries at already-measured cost. The actual open question is operational, not cryptographic: no validated estimate exists for real-world sanctions/jurisdiction list sizes against that ceiling, and a rebuild event (new root, all cached low-leaf lookups invalidated) has no defined procedure yet.
+- **L10 — Root and leaf authenticity rest entirely on registry access control, not a signature.** TR-3 originally called for the issuer to sign published roots with EdDSA; this PoC retires that and relies solely on the `EligibilityRegistry` contract restricting leaf insertion and root publication to the issuer's on-chain address. This is sufficient under L1's trust model (the author operates both issuer and holder, and issuer honesty is already assumed) but means authenticity depends entirely on that one contract's access-control logic being correct — there is no independent, contract-logic-free way to verify a root came from the issuer, the way a signature would provide. A real multi-operator deployment would need to reconsider this.
 
 ---
 
@@ -495,13 +496,4 @@ To be stated plainly in all output.
 5. Android and cross-device measurement.
 6. Delegated attestation from real financial institutions.
 7. Reinstate EU condition (c) (P5) and/or the Spanish regime (P3), if Phase 2 constraint counts show headroom — the M-of-N construct (F2.4) is built to make this a configuration change, not a redesign.
-
----
-
-## 13. Risks
-
-- **R1 — Abandonment is the dominant risk.** Mitigated by single-library scope, phase deliverables roughly every 5–6 weeks, and the §10 reduction levers. Using a lever early is judgment, not failure.
-- **R2 — Phase 4 is the largest and most integration-heavy.** Failure there costs the demo, which is the most communicable output. Front-load integration risk by exercising the full path early with a trivial circuit.
-- **R3 — Unfamiliarity with ZK internals** is the principal schedule risk. Mitigated by using existing libraries throughout; no novel cryptography is required.
-- **R4 — Circuit complexity may exceed on-device feasibility** at the upper end of the dial. This is a *result*, not a failure — the boundary is part of the answer.
-- **R5 — Estimates are unvalidated.** Re-baseline after D0 against measured throughput.
+8. Reinstate TR-3's issuer EdDSA signature over published roots (retired for the MVP — L10), giving root authenticity an independently-verifiable guarantee beyond the registry contract's own access control — relevant once more than one party needs to trust the same infrastructure. `circuits/eddsa-baseline`'s Phase 1 measurement already covers the cost.

@@ -22,7 +22,7 @@ Reflects the PRD v4.1 scope: EU regime only, 2-of-2 threshold (P4), predicates P
 | Field | BN254 scalar field (`Fr`) | circom/Groth16 default (TR-1); every attribute, commitment, and nullifier value is a field element |
 | Proof system | Groth16 over BN254 | TR-1 |
 | Hash | Poseidon | TR-2; used for commitments, Merkle tree, and nullifier — one hash family everywhere |
-| Signature | EdDSA over Baby Jubjub, Poseidon-based variant (circomlib `EdDSAPoseidonVerifier`) | TR-3; kept Poseidon-based for primitive consistency, but per §3 below it is verified **off-circuit**, not inside the eligibility circuit |
+| Signature | EdDSA over Baby Jubjub, Poseidon-based variant (circomlib `EdDSAPoseidonVerifier`) | TR-3, *retired* — measured standalone in Phase 1 (F1.4) but not used anywhere in the deployed protocol; see §3 below |
 | Set membership | Merkle inclusion (Poseidon tree) | TR-4 |
 | Set non-membership | Indexed/sorted Merkle tree with adjacency proof | TR-4; construction detailed in §5.3 |
 
@@ -34,7 +34,7 @@ Reflects the PRD v4.1 scope: EU regime only, 2-of-2 threshold (P4), predicates P
 
 **Why this is sufficient:** under §3.1 Option A (single tree, full-attribute leaves), a leaf can only enter the tree through an issuer-authorized transaction — the `EligibilityRegistry` contract (Phase 3, TR-12) accepts leaf insertions only from the issuer's address. Tree membership is therefore already proof that the issuer inserted this exact leaf; requiring an additional in-circuit signature check over the same commitment would prove nothing a malicious circuit couldn't already fake by fabricating both the "signature" and a Merkle path to a leaf it invented — the actual security boundary is the registry's access control, not an in-circuit check.
 
-**Where TR-3's EdDSA requirement is still satisfied:** the issuer signs the *published root* (or a batch manifest) with EdDSA-Poseidon at epoch-rotation time. This signature is verified when the root is published/updated — on-chain, once per epoch, not once per proof. It authenticates "the issuer stands behind this root," which is a coarser but sufficient claim once leaf insertion is already access-controlled.
+**TR-3 (issuer EdDSA signatures) is retired, not relocated.** An earlier version of this document proposed satisfying TR-3 by having the issuer sign the *published root* with EdDSA-Poseidon at epoch-rotation time, on top of the access control above. This PoC doesn't build that: root publication relies solely on the same access-control mechanism already justified above — the `EligibilityRegistry` contract (Phase 3, TR-12) accepts root updates only from the issuer's address, exactly as it does leaf insertions. A signature would add one real property access control alone doesn't (independent verifiability without trusting the registry contract's own code — PRD §11 L10), but it's not load-bearing for this PoC's threat model, where issuer honesty is already assumed (L1). Cut for that reason, not because it's technically infeasible — `circuits/eddsa-baseline` still exists as a measured Phase 1 baseline, just unused by the deployed protocol.
 
 **Cost consequence:** the eligibility circuit avoids the most expensive of the four F1.4 baseline primitives entirely. The EdDSA baseline circuit is still built and measured in Phase 1 (F1.4 requires it as a standalone reference number), but it does not appear in the Phase 2 credential circuit's constraint count.
 

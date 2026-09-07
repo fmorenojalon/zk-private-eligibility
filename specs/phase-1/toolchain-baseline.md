@@ -82,7 +82,7 @@ Four standalone circuits, no credential logic — pure primitive measurement:
 
 All values go through the measurement harness ([measurement-harness.md](measurement-harness.md)) as structured records, not ad-hoc notes.
 
-**Status: satisfied (desktop for all four; on-device for one).** All four circuits are built, set up, and proven/verified across their full parameter sets — full results, methodology, and reproduction steps in [circuits/BASELINE_RESULTS.md](../../circuits/BASELINE_RESULTS.md). `poseidon-baseline` additionally has real, repeated, device-tagged records via F1.3's now-implemented harness — the other three circuits haven't been wired through mopro on-device yet, so their desktop numbers are still the only data point. Re-baselining the remaining three on real hardware is expected per PRD R5.
+**Status: satisfied (desktop for all four; on-device for one).** All four circuits are built, set up, and proven/verified across their full parameter sets — full results, methodology, and reproduction steps in [circuits/BASELINE_RESULTS.md](../../circuits/BASELINE_RESULTS.md). `poseidon-baseline` additionally has real, repeated, device-tagged records via F1.3's now-implemented harness — the other three circuits haven't been wired through mopro on-device yet, so their desktop numbers are still the only data point. Re-baselining the remaining three on real hardware is expected.
 
 ---
 
