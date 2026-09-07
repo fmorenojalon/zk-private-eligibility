@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary
 
-**What this is.** A working, end-to-end system in which a person proves on their own phone that they qualify as a sophisticated investor under EU rules — *without disclosing income, net worth, employment, or identity* — and an investment platform verifies that claim on-chain, learning nothing beyond a yes/no.
+**What this is.** A working, end-to-end system in which a person proves on their own phone that they qualify as a sophisticated investor under EU rules — *without disclosing income, portfolio, employment, or identity* — and an investment platform verifies that claim on-chain, learning nothing beyond a yes/no.
 
 **The problem.** Investing through a regulated platform today means surrendering payslips, bank certificates, tax returns and identity documents to establish a single boolean: *may this person invest, and up to how much?* The platform then stores that dossier permanently — a compliance burden for them and a standing breach risk for the investor. The regulation only ever required the boolean.
 
@@ -49,11 +49,7 @@ Qualifies on **at least two of three**:
 | (a) | Gross income **or** portfolio | ≥ €60,000/yr **or** portfolio > €100,000 |
 | (b) | Professional experience | ≥ 1 yr financial sector in a knowledge-requiring role **or** ≥ 12 mo executive at a qualifying entity |
 
-### 2.3 Investment ceiling (non-sophisticated)
-
-Investment above **the higher of €1,000 or 5% of net worth** triggers additional protections. Modelled as a hard cap predicate.
-
-### 2.4 Why this regulation suits ZK
+### 2.3 Why this regulation suits ZK
 
 The EU structure is a *threshold predicate over heterogeneous sub-conditions* — substantive circuit design rather than a single comparison, even reduced to 2-of-2 for the MVP (§2.2). Modelling it as a generic M-of-N comparator, rather than hardcoding "both," is what keeps this a genuine architectural showcase rather than an AND gate — and is what makes cross-jurisdiction extensibility (re-adding condition (c), or the Spanish regime) a configuration change rather than a rebuild.
 
@@ -71,8 +67,9 @@ The EU structure is a *threshold predicate over heterogeneous sub-conditions* �
 | P6 | subject ∉ sanctions set | set non-membership | both |
 | P7 | credential not expired | freshness | both |
 | P8 | credential not revoked | Merkle membership in current valid-set root | both |
-| P9 | investment ≤ max(€1,000, 5% × net worth) | multiplication + comparison | both |
 | P10 | scope-bound single use | nullifier | both |
+
+*P9 is retired — the investment ceiling predicate (below max(€1,000, 5% of net worth)) was removed from scope; this project targets sophisticated/accredited investors only, not the non-sophisticated-investor protections that predicate existed for. P10 keeps its number rather than shifting to P9, to avoid renumbering churn across specs.*
 
 **Complexity dial.** Because greenfield primitives are uniformly cheap, the measurement axis is deliberate complexity scaling: Merkle depth (16 → 20 → 32), predicate count (P1 alone → full set), allowlist/sanctions set sizes, and regime (EU 2-of-3).
 
@@ -98,7 +95,7 @@ Naive revocation publishes revoked credential identifiers; proving you are absen
 
 **Approach:** a Merkle allowlist of valid credentials with epoch rotation. The holder proves membership in the current valid-set root without revealing which leaf. Revocation removes the leaf and rotates the root.
 
-**Accepted cost:** revocation takes effect only at an epoch boundary, creating a bounded exposure window. Holders must refresh their Merkle witness on each root change.
+**Accepted cost:** revocation takes effect only at an epoch boundary, creating a bounded exposure window. Holders must refresh their Merkle path on each root change.
 
 ### 4.2 Cap Enforcement ⊗ Unlinkability
 
@@ -108,7 +105,7 @@ Enforcing a cumulative cap requires per-investor state; unlinkability forbids co
 
 This solves two problems at once:
 
-- **Reuse within one offering becomes detectable.** Without it, nothing stops a holder from presenting eligibility to the same offering repeatedly — the investment ceiling (P11) only bounds a *single* presentation, not how many times that presentation can be repeated. If Alice presents to an offering twice, her second nullifier collides with her first and is rejected on-chain (PR-7, TR-13). Charlie, a different investor presenting to that *same* offering, produces his own independent nullifier — it depends on his own holder secret — so his activity is entirely unaffected by Alice's.
+- **Reuse within one offering becomes detectable.** Without it, nothing stops a holder from presenting eligibility to the same offering an unlimited number of times, inflating their effective allocation past whatever a single investor is meant to receive. If Alice presents to an offering twice, her second nullifier collides with her first and is rejected on-chain (PR-7, TR-13). Charlie, a different investor presenting to that *same* offering, produces his own independent nullifier — it depends on his own holder secret — so his activity is entirely unaffected by Alice's.
 - **Presentations to different offerings stay unlinkable.** Alice investing in two unrelated offerings produces two nullifiers with no discoverable relationship to each other or to her identity (PR-6, PR-7) — this is the mechanism behind §5's Beat 2.
 
 **Accepted cost:** cumulative caps *across* offerings cannot be enforced without linkage. This limitation is stated explicitly in the output rather than papered over.
@@ -121,7 +118,7 @@ The scenario the entire system exists to demonstrate, in three beats.
 
 **Setup.** *Alice* holds a credential issued by **Banco Demo** attesting her financial standing. **Inmobiliaria Tokenizada** issues a tokenized Spanish commercial real-estate offering restricted to EU sophisticated investors in permitted jurisdictions.
 
-**Beat 1 — Privacy.** Alice opens the offering, is asked to prove eligibility, and her phone generates a proof on-device. The platform verifies it on-chain and grants access. *The platform learns only that she is eligible and a scope-bound nullifier — not her income, net worth, employment, jurisdiction detail, identity, or which credential she holds.*
+**Beat 1 — Privacy.** Alice opens the offering, is asked to prove eligibility, and her phone generates a proof on-device. The platform verifies it on-chain and grants access. *The platform learns only that she is eligible and a scope-bound nullifier — not her income, portfolio, employment, jurisdiction detail, identity, or which credential she holds.*
 
 **Beat 2 — Unlinkability.** Alice invests in a second, unrelated offering using the same credential. *The two presentations cannot be correlated by the platform or by any chain observer* — each offering is its own scope (§4.2), so the two nullifiers are cryptographically unrelated to each other and to Alice's identity.
 
@@ -141,7 +138,7 @@ Five flows define the system's behaviour.
 2. Issuer verifies attributes out-of-band *(simulated — see §11)*.
 3. Issuer computes a commitment binding the attributes to a holder-controlled secret, signs it, and inserts it into the valid-set tree.
 4. Issuer publishes the updated root for the current epoch.
-5. Holder receives the credential, signature, and Merkle witness; stores them on-device.
+5. Holder receives the credential, signature, and Merkle path; stores them on-device.
 
 **Property:** the holder secret is generated on-device and never leaves it.
 
@@ -203,7 +200,7 @@ Bob, whose income and portfolio both fall short of the EU regime's thresholds, a
 ### 7.4 Regulatory modelling
 
 - **PR-13** The system SHALL support the EU 2-of-3 regime over a single credential.
-- **PR-14** The system SHALL enforce the investment ceiling predicate relative to undisclosed net worth.
+- **PR-14** — *Retired.* Enforced the investment ceiling predicate (P9, retired — §3) relative to undisclosed net worth; removed along with it, scope now being sophisticated/accredited investors only.
 - **PR-15** Deviations from actual regulation SHALL be documented.
 
 ### 7.5 Holder experience
@@ -372,7 +369,7 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 - F2.2 Circuits SHALL implement P1–P10.
 - F2.3 The EU 2-of-3 regime SHALL be satisfiable from a single credential (PR-13).
 - F2.4 The threshold-of-N predicate (P4) SHALL be implemented as a first-class construct.
-- F2.5 The investment ceiling (P9) SHALL be enforced against undisclosed net worth.
+- F2.5 — *Retired,* along with P9 (§3): the investment ceiling requirement no longer applies now that scope is sophisticated/accredited investors only.
 - F2.6 Circuits SHALL be parameterised per TR-6.
 - F2.7 A test suite SHALL demonstrate correct acceptance and rejection across eligible, ineligible, boundary, and malformed inputs.
 
@@ -472,6 +469,7 @@ To be stated plainly in all output.
 - **L6 — Not production-hardened.** No security audit, no key management discipline, no adversarial testing.
 - **L7 — EU regime is 2-of-2, not 2-of-3.** Condition (c) (market activity, P5) was dropped as the most expensive sub-condition. The threshold predicate is built as a generic M-of-N construct (F2.4), so this is a configuration limit rather than an architectural one — but the MVP result characterises 2-of-2, not the full regulation.
 - **L8 — Spanish regime not implemented.** Retained in §2.1 as regulatory reference only. Its unique predicate, P3 (advisory-contract membership), is consequently out of scope too.
+- **L9 — Merkle trees have fixed capacity, set by depth at deploy time.** Every tree in this system (valid-set, jurisdiction, sanctions) holds at most `2^depth` leaves; exceeding it means a full rebuild at greater depth, not an incremental add. This is cheaper to absorb than it sounds — F1.4's baseline shows constraint cost scales linearly with depth while capacity scales exponentially (depth 32 costs ~2× depth 16's constraints for 65,536× the capacity), so depth 20 alone (Phase 2's default) already covers over a million entries at already-measured cost. The actual open question is operational, not cryptographic: no validated estimate exists for real-world sanctions/jurisdiction list sizes against that ceiling, and a rebuild event (new root, all cached low-leaf lookups invalidated) has no defined procedure yet.
 
 ---
 

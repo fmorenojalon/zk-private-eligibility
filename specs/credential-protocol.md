@@ -1,7 +1,7 @@
 # Credential Protocol
 
 **Delivered by:** F1.5 (Phase 1) · **Feeds:** Phase 2 (F2.1–F2.7) circuit implementation, and every later phase that touches the credential, predicates, or nullifier
-**Status: satisfied.** Every other Phase 1 requirement was built directly against this document without needing further design decisions — F1.1/F1.4's `poseidon-baseline` circuits implement exactly the arity-2/arity-10 commitment structure from §4.2 (and [BASELINE_RESULTS.md](../circuits/BASELINE_RESULTS.md) empirically confirms the arity-cost reasoning behind the Option-A-over-5+5-split correction); F1.4's `merkle-baseline` implements the boolean-constrained inclusion construction §5.3 calls for; F1.2's Groth16Verifier and F1.4's `eddsa-baseline` reflect §3's membership-only attestation decision (no in-circuit signature check, but the primitive still measured standalone). Nothing here has needed revision since the arity fix ([git history](../TOOLCHAIN.md), commit `0d010fe`).
+**Status: satisfied**, with one number since drifted. Every other Phase 1 requirement was built directly against this document without needing further design decisions — F1.1/F1.4's `poseidon-baseline` circuits implement the arity-2/arity-10 commitment structure from §4.2 as it stood at the time (and [BASELINE_RESULTS.md](../circuits/BASELINE_RESULTS.md) empirically confirms the arity-cost reasoning behind the Option-A-over-5+5-split correction, which still holds); F1.4's `merkle-baseline` implements the boolean-constrained inclusion construction §5.3 calls for; F1.2's Groth16Verifier and F1.4's `eddsa-baseline` reflect §3's membership-only attestation decision (no in-circuit signature check, but the primitive still measured standalone). §4.2's schema has since dropped one attribute (`net_worth`, alongside P9's retirement — §5), making the real commitment arity 9, not 10 — Phase 1's arity-10 baseline is no longer an exact hit for what Phase 2 implements, though it remains the closest existing reference point (§4.2 has the detail). Nothing else has needed revision since the arity fix ([git history](../TOOLCHAIN.md), commit `0d010fe`).
 
 > This document is the design contract for the credential, its predicates, the epoch/revocation model, the nullifier, and the threat model. Per the Phase 1 acceptance criterion, it must be complete enough to implement Phase 2 against without further design decisions. Items that are genuinely deferred are called out explicitly in §8, not left implicit.
 
@@ -54,7 +54,6 @@ Reflects the PRD v4.1 scope: EU regime only, 2-of-2 threshold (P4), predicates P
 | `executive_months` | uint | P3 | months as executive at a qualifying entity |
 | `jurisdiction_code` | uint (ISO 3166-1 numeric) | P5 | |
 | `identity_commitment` | field element | P6 | `Poseidon(kyc_identity_hash, issuer_salt)`, computed at issuance; the value checked against the sanctions non-membership tree — kept separate from the KYC identity itself so the credential never carries the raw identity |
-| `net_worth` | uint (EUR) | P9 | |
 | `issued_epoch` | uint | — | epoch at issuance |
 | `expiry_epoch` | uint | P7 | |
 | `schema_version` | uint | — | constant per circuit version, allows future schema migration without ambiguity |
@@ -66,12 +65,12 @@ Two steps, not one flat hash — because the issuer and the holder each compute 
 
 ```
 attr_hash = Poseidon(income, portfolio_value, financial_sector_months, executive_months,
-                      jurisdiction_code, identity_commitment, net_worth,
+                      jurisdiction_code, identity_commitment,
                       issued_epoch, expiry_epoch, schema_version)
 leaf      = Poseidon(holder_secret, attr_hash)
 ```
 
-`attr_hash` is a single 10-input Poseidon call — circomlib (pinned commit, [phase-1/toolchain-baseline.md §2](phase-1/toolchain-baseline.md#2-pinned-toolchain-versions)) ships reference-derived round constants for Poseidon state widths up to `t=17` (i.e. up to 16 inputs), so arity 10 is exactly as standard and audited as arity 2; there is no benefit to splitting it into smaller groups, and doing so would cost more constraints (each additional Poseidon call pays its own full-round overhead) for no robustness gain.
+`attr_hash` is a single 9-input Poseidon call — circomlib (pinned commit, [phase-1/toolchain-baseline.md §2](phase-1/toolchain-baseline.md#2-pinned-toolchain-versions)) ships reference-derived round constants for Poseidon state widths up to `t=17` (i.e. up to 16 inputs), so arity 9 is exactly as standard and audited as arity 2; there is no benefit to splitting it into smaller groups, and doing so would cost more constraints (each additional Poseidon call pays its own full-round overhead) for no robustness gain. (F1.4's own Poseidon baseline measured arity 10 specifically, back when the schema carried 10 attributes — arity 9 is one narrower, using circomlib's adjacent `t=10` parameter set rather than the exact `t=11` configuration that baseline exercised; the arity-cost reasoning still holds; see the status line above for what this means for that baseline's "exact match" claim.)
 
 The two-*step* structure itself (`attr_hash`, then `leaf`) is load-bearing, not arity-driven: at issuance the issuer receives the raw attribute values to verify them out-of-band (Flow 1) and must be able to independently recompute `attr_hash` to confirm the holder isn't misrepresenting what's bound into the credential — but per PR-5 the issuer must never learn `holder_secret`. Only the holder, who alone holds the secret, can compute `leaf`. The holder computes it locally and sends the issuer the opaque `leaf` value (a hash, not a secret preimage) for insertion into the tree.
 
@@ -95,16 +94,17 @@ P4 (the M-of-N showcase) evaluates `sum(ConditionA, ConditionB) ≥ M`, with `M 
 | P3 | ≥1yr financial sector OR ≥12mo executive | private: `financial_sector_months`, `executive_months` | `financial_sector_months ≥ 12 ∨ executive_months ≥ 12` |
 | P4 | ≥2 of {A, B} hold | derived: `condA = P1 ∨ P2`, `condB = P3` | generic `ThresholdOfN(M=2, N=2)` over `[condA, condB]` |
 | P5 | jurisdiction ∈ allowed set | private: `jurisdiction_code`, Merkle path; public: `jurisdictionRoot` | Merkle inclusion proof |
-| P6 | subject ∉ sanctions set | private: `identity_commitment`, adjacency witness; public: `sanctionsRoot` | indexed-tree non-membership, §5.3 |
+| P6 | subject ∉ sanctions set | private: `identity_commitment`, low-leaf triple (`value`, `nextValue`, `nextIndex`) and its Merkle path; public: `sanctionsRoot` | indexed-tree non-membership via embedded next-pointer, §5.3 |
 | P7 | credential not expired | private: `expiry_epoch`; public: `currentEpoch` | `expiry_epoch ≥ currentEpoch` |
 | P8 | credential not revoked | private: `leaf`, Merkle path; public: `validSetRoot` | Merkle inclusion of `leaf` |
-| P9 | investment ≤ max(€1,000, 5%×net worth) | private: `net_worth`; public: `investmentAmount` | `investmentAmount ≤ 1000 ∨ investmentAmount × 100 ≤ net_worth × 5` (multiplication avoids in-circuit division) |
 | P10 | scope-bound single use | private: `holder_secret`; public: `epoch`, `scope` → output `nullifier` | `nullifier = Poseidon(holder_secret, epoch, scope)`, §6 |
+
+*P9 (investment ceiling, `investmentAmount ≤ max(1000, net_worth × 0.05)`) is retired — removed from scope along with the `net_worth` attribute (§4.1) now that this project targets sophisticated/accredited investors only. P10 keeps its number; see PRD.md §3 for the same note.*
 
 ### 5.1 Public vs. Private Inputs (summary)
 
-**Public (verifier-visible):** `validSetRoot`, `jurisdictionRoot`, `sanctionsRoot`, `currentEpoch`, `scope`, `investmentAmount`, `nullifier` (output).
-**Private (never leave the device):** all attribute values, `holder_secret`, all Merkle witnesses.
+**Public (verifier-visible):** `validSetRoot`, `jurisdictionRoot`, `sanctionsRoot`, `currentEpoch`, `scope`, `nullifier` (output).
+**Private (never leave the device):** all attribute values, `holder_secret`, all Merkle paths.
 
 This is the concrete enumeration PR-3 requires ("a verifier SHALL learn only: eligible/not eligible, the scope-bound nullifier, and the public inputs required for verification").
 
@@ -114,13 +114,22 @@ A first-class, reusable circuit component: given `N` boolean signals and a thres
 
 ### 5.3 Non-Membership Construction (P6, TR-4)
 
-Indexed Merkle tree: sanctioned identity commitments are stored sorted by value. Non-membership of `identity_commitment` is proven by exhibiting two **adjacent** leaves `low` and `high` such that:
+**Indexed Merkle tree**, using the linked-list-in-a-tree construction (the same category used by indexed-tree accumulators elsewhere, e.g. Aztec's). Each leaf commits to a triple, not a bare value:
 
-1. `low < identity_commitment < high`
-2. Both `low` and `high` are valid members of `sanctionsRoot` (standard Merkle inclusion)
-3. `low` and `high` are tree-adjacent (no leaf value lies between them) — enforced by the issuer's insertion procedure maintaining sorted, gapless adjacency, attested implicitly by tree well-formedness
+```
+leaf_i = Poseidon(value_i, nextValue_i, nextIndex_i)
+```
 
-This is the same category of construction used by indexed-tree accumulators elsewhere (e.g. Aztec's indexed Merkle trees); chosen over a bitmap or flat-list scan because it stays constant-size regardless of sanctions-list size, matching the "allowlist/sanctions set sizes" complexity dial (§3, PRD).
+sorted so that following `nextIndex` pointers visits every sanctioned `value` in ascending order. Two sentinels bound the range: a `value = 0` leaf below the smallest real entry, and the leaf holding the largest real entry carries `nextValue = p - 1` (the field's top) instead of pointing to another real entry — so both "below everything" and "above everything" collapse into ordinary in-range checks against a sentinel, with no special-case logic in the circuit.
+
+Non-membership of `identity_commitment` is proven by:
+
+1. Locating the single leaf whose `value < identity_commitment < nextValue` (found off-circuit by the holder; the circuit only checks the relation holds)
+2. Proving Merkle inclusion of *that one leaf* — its full triple, hashed — against `sanctionsRoot`
+
+Adjacency is enforced by construction, not by a side condition: `nextValue` is part of the hashed leaf content the root commits to, so a holder cannot substitute a false gap — the actual next sanctioned value (or the upper sentinel) is exactly what `sanctionsRoot` attests to. This is a correction from an earlier version of this section, which described exhibiting two independently-proven adjacent leaves (`low`, `high`) and trusting the issuer's insertion procedure to have kept them gapless — that design asks the circuit to trust an invariant it has no way to check itself: nothing stops a holder from picking two *non-adjacent* members that happen to bracket `identity_commitment`, silently passing off a value that actually sits between them as absent. The embedded-pointer design closes that gap, and costs one Merkle proof per check instead of two.
+
+Chosen over a bitmap or flat-list scan because it stays constant-size regardless of sanctions-list size, matching the "allowlist/sanctions set sizes" complexity dial (§3, PRD).
 
 ---
 
@@ -128,8 +137,8 @@ This is the same category of construction used by indexed-tree accumulators else
 
 - **Epoch:** a monotonically increasing integer, issuer-controlled. Each epoch has exactly one `validSetRoot`, published on-chain by `EligibilityRegistry` (TR-12).
 - **Rotation trigger:** any revocation forces a new root and epoch (issuer removes the leaf, recomputes the tree, publishes). Exact rotation cadence policy (e.g. whether epochs also rotate on a fixed timer independent of revocation) is an issuer-service configuration decision, deferred to Phase 3 (§8).
-- **Witness refresh:** holders must re-fetch their Merkle witness against the current root each epoch to keep proving membership — an explicit, accepted UX cost (PRD §4.1).
-- **Bounded exposure window (L2):** between a revocation event and the next root publication, a credential whose witness still validates against the *previous* root can still produce a proof if the verifier accepts stale roots. **Mitigation:** the platform's presentation request specifies `currentEpoch`/`validSetRoot` explicitly (Flow 2, step 2), and the circuit's public input for `validSetRoot` must match what the verifier contract holds as canonical for that epoch — a proof against a stale root is simply a proof against a public input the on-chain verifier rejects as non-current. The exposure window is therefore bounded by *root publication latency*, not by holder behavior.
+- **Path refresh:** holders must re-fetch their Merkle path against the current root each epoch to keep proving membership — an explicit, accepted UX cost (PRD §4.1).
+- **Bounded exposure window (L2):** between a revocation event and the next root publication, a credential whose Merkle path still validates against the *previous* root can still produce a proof if the verifier accepts stale roots. **Mitigation:** the platform's presentation request specifies `currentEpoch`/`validSetRoot` explicitly (Flow 2, step 2), and the circuit's public input for `validSetRoot` must match what the verifier contract holds as canonical for that epoch — a proof against a stale root is simply a proof against a public input the on-chain verifier rejects as non-current. The exposure window is therefore bounded by *root publication latency*, not by holder behavior.
 
 ---
 
@@ -163,7 +172,7 @@ The mechanism specified here is *what* gets checked and recorded, and that it ha
 
 ### 8.1 Assets
 
-- Attribute values (income, portfolio, experience, jurisdiction, net worth)
+- Attribute values (income, portfolio, experience, jurisdiction)
 - `holder_secret`
 - Linkage between two presentations by the same holder
 - Which specific credential (leaf) a given proof corresponds to

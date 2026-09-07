@@ -1,6 +1,6 @@
 # zk-poc
 
-A greenfield zero-knowledge credential system: a person proves on their own phone that they qualify as a sophisticated investor under EU rules — without disclosing income, net worth, employment, or identity — and an investment platform verifies that claim on-chain, learning nothing beyond a yes/no. Solo applied-research proof of concept. Full rationale in [`specs/PRD.md`](specs/PRD.md).
+A greenfield zero-knowledge credential system: a person proves on their own phone that they qualify as a sophisticated investor under EU rules — without disclosing income, portfolio, employment, or identity — and an investment platform verifies that claim on-chain, learning nothing beyond a yes/no. Solo applied-research proof of concept. Full rationale in [`specs/PRD.md`](specs/PRD.md).
 
 ## Start here
 
