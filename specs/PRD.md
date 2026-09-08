@@ -73,7 +73,7 @@ The EU structure is a *threshold predicate over heterogeneous sub-conditions* �
 
 **Single tree, full attributes in the leaf, predicate logic evaluated at proof time.**
 
-Each leaf in the valid-set tree is a Poseidon commitment over the holder's **complete attested attribute set** (income, portfolio, professional-experience data, holder secret) — not a pre-classified "qualifies / doesn't" flag, and not one tree per qualification level. The issuer's only job is attesting raw facts and maintaining one tree. All eligibility logic — including the M-of-N threshold (P4) and every other predicate — is evaluated **inside the circuit at proof time**, against whichever policy the verifying platform specifies for that offering (PR-20).
+Each leaf in the valid-set tree is a Poseidon commitment over the holder's **complete attested attribute set** (income, portfolio, professional-experience data, holder secret). The issuer's only job is attesting raw facts and maintaining one tree. All eligibility logic — including the M-of-N threshold (P4) and every other predicate — is evaluated **inside the circuit at proof time**, against whichever policy the verifying platform specifies for that offering (PR-20).
 
 ---
 
@@ -106,7 +106,7 @@ This solves two problems at once:
 
 The scenario the entire system exists to demonstrate, in three beats.
 
-**Setup.** *Alice* holds a credential issued by **Banco Demo** attesting her financial standing. **Inmobiliaria Tokenizada** issues a tokenized Spanish commercial real-estate offering restricted to EU sophisticated investors in permitted jurisdictions.
+**Setup.** *Alice* holds a credential issued by **Banco Demo** attesting her financial standing. **Inmobiliaria Tokenizada** Platform issues a tokenized Spanish commercial real-estate offering restricted to EU sophisticated investors in permitted jurisdictions.
 
 **Beat 1 — Privacy.** Alice opens the offering, is asked to prove eligibility, and her phone generates a proof on-device. The platform verifies it on-chain and grants access. *The platform learns only that she is eligible and a scope-bound nullifier — not her income, portfolio, employment, jurisdiction detail, identity, or which credential she holds.*
 
@@ -114,7 +114,7 @@ The scenario the entire system exists to demonstrate, in three beats.
 
 **Beat 3 — Revocation.** Banco Demo revokes Alice's credential. At the next epoch, the same credential fails verification and access is refused.
 
-**Why these three.** They are the three properties that make the system worth building. Any one alone is unremarkable; together they constitute a working privacy-preserving compliance flow.
+**Why these three.** These are the three properties that constitute a working privacy-preserving compliance flow.
 
 ---
 
