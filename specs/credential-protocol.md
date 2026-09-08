@@ -11,7 +11,7 @@
 
 Covers the full protocol design — not just the primitives Phase 1 measures. Phase 2 implements what's specified here; Phase 1 only builds standalone baseline circuits for the four primitives in [phase-1/toolchain-baseline.md](phase-1/toolchain-baseline.md).
 
-Reflects the PRD v4.1 scope: EU regime only, 2-of-2 threshold (P4), predicates P1–P10, single-tree credential (§3.1 Option A), no in-circuit issuer-signature verification (decided below).
+Reflects the PRD v4.1 scope: EU regime only, 2-of-2 threshold (P4), predicates P1–P10, single-tree credential (§3.1), no in-circuit issuer-signature verification (decided below).
 
 ---
 
@@ -32,7 +32,7 @@ Reflects the PRD v4.1 scope: EU regime only, 2-of-2 threshold (P4), predicates P
 
 **Decision:** the eligibility circuit does **not** verify an EdDSA signature in-circuit. Merkle membership of a credential's leaf in the issuer's valid-set tree *is* the attestation.
 
-**Why this is sufficient:** under §3.1 Option A (single tree, full-attribute leaves), a leaf can only enter the tree through an issuer-authorized transaction — the `EligibilityRegistry` contract (Phase 3, TR-12) accepts leaf insertions only from the issuer's address. Tree membership is therefore already proof that the issuer inserted this exact leaf; requiring an additional in-circuit signature check over the same commitment would prove nothing a malicious circuit couldn't already fake by fabricating both the "signature" and a Merkle path to a leaf it invented — the actual security boundary is the registry's access control, not an in-circuit check.
+**Why this is sufficient:** under §3.1's single tree, full-attribute leaves, a leaf can only enter the tree through an issuer-authorized transaction — the `EligibilityRegistry` contract (Phase 3, TR-12) accepts leaf insertions only from the issuer's address. Tree membership is therefore already proof that the issuer inserted this exact leaf; requiring an additional in-circuit signature check over the same commitment would prove nothing a malicious circuit couldn't already fake by fabricating both the "signature" and a Merkle path to a leaf it invented — the actual security boundary is the registry's access control, not an in-circuit check.
 
 **TR-3 (issuer EdDSA signatures) is retired, not relocated.** An earlier version of this document proposed satisfying TR-3 by having the issuer sign the *published root* with EdDSA-Poseidon at epoch-rotation time, on top of the access control above. This PoC doesn't build that: root publication relies solely on the same access-control mechanism already justified above — the `EligibilityRegistry` contract (Phase 3, TR-12) accepts root updates only from the issuer's address, exactly as it does leaf insertions. A signature would add one real property access control alone doesn't (independent verifiability without trusting the registry contract's own code — PRD §11 L10), but it's not load-bearing for this PoC's threat model, where issuer honesty is already assumed (L1). Cut for that reason, not because it's technically infeasible — `circuits/eddsa-baseline` still exists as a measured Phase 1 baseline, just unused by the deployed protocol.
 

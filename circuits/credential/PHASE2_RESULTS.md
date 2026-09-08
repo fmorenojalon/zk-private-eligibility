@@ -31,6 +31,8 @@ All three `groth16 verify` runs returned `OK`, against genuine proofs (not witne
 
 ## Reproducing
 
+If `circuits/merkle-baseline/powersOfTau28_hez_final_{14,16}.ptau` aren't present, download them first — see [`toolchain-baseline.md §4`](../../specs/phase-1/toolchain-baseline.md#4-trusted-setup) for the source.
+
 From `circuits/credential/`:
 
 ```sh

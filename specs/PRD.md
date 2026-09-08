@@ -2,10 +2,6 @@
 
 ## A greenfield ZK credential system, proven on-device, verified on-chain
 
-
-> This is a **requirements specification**, not an implementation guide. It defines *what* must be true, not *how* to build it.
-> 
-
 ---
 
 ## 1. Executive Summary
@@ -73,21 +69,15 @@ The EU structure is a *threshold predicate over heterogeneous sub-conditions* �
 
 **Complexity dial.** Because greenfield primitives are uniformly cheap, the measurement axis is deliberate complexity scaling: Merkle depth (16 → 20 → 32), predicate count (P1 alone → full set), allowlist/sanctions set sizes, and regime (EU 2-of-3).
 
-### 3.1 Credential & Tree Structure — Decision
+### 3.1 Credential & Tree Structure
 
-**Decision: Option A — single tree, full attributes in the leaf, predicate logic evaluated at proof time.**
+**Single tree, full attributes in the leaf, predicate logic evaluated at proof time.**
 
 Each leaf in the valid-set tree is a Poseidon commitment over the holder's **complete attested attribute set** (income, portfolio, professional-experience data, holder secret) — not a pre-classified "qualifies / doesn't" flag, and not one tree per qualification level. The issuer's only job is attesting raw facts and maintaining one tree. All eligibility logic — including the M-of-N threshold (P4) and every other predicate — is evaluated **inside the circuit at proof time**, against whichever policy the verifying platform specifies for that offering (PR-20).
 
-**Rejected alternative (Option B):** separate trees pre-computed per qualification ("EU-sophisticated" list, "ES-accredited" list, etc.), where the issuer does the eligibility math off-chain and membership alone is the proof. Rejected because it collapses the project's core contribution — the predicate is no longer proven, only list membership, which is a strictly easier problem existing tools (e.g. Semaphore) already solve. It also means every new or amended rule requires the issuer to build and maintain a new list, whereas under Option A a new rule is just a new circuit run against the same tree.
-
-*(This decision is separate from, but consistent with, the still-open question of whether the issuer signature needs in-circuit verification given tree membership already attests the leaf — tracked in F1.5, to be resolved with measured constraint deltas in Phase 2.)*
-
 ---
 
-## 4. The Two Hard Design Problems
-
-These are the intellectual core. Both are scoped to solo-feasible approaches with their limitations stated rather than hidden.
+## 4. Core Design Challenges
 
 ### 4.1 Unlinkability ⊗ Revocation
 
@@ -136,7 +126,7 @@ Five flows define the system's behaviour.
 
 1. Holder requests a credential from the issuer, submitting attribute values.
 2. Issuer verifies attributes out-of-band *(simulated — see §11)*.
-3. Issuer computes a commitment binding the attributes to a holder-controlled secret and inserts it into the valid-set tree (access-controlled to the issuer's address — L10).
+3. Holder computes a commitment binding the attributes to a holder-controlled secret that never leaves the device, and sends the issuer the opaque commitment for insertion into the valid-set tree (access-controlled to the issuer's address — L10).
 4. Issuer publishes the updated root for the current epoch.
 5. Holder receives the credential and Merkle path; stores them on-device.
 
@@ -145,7 +135,7 @@ Five flows define the system's behaviour.
 ### Flow 2 — Eligibility Presentation (core flow)
 
 1. Holder browses an offering on the platform.
-2. Platform issues a presentation request specifying scope (this offering, uniquely — §4.2), epoch, and intended investment amount.
+2. Platform issues a presentation request specifying scope (this offering, uniquely — §4.2) and epoch.
 3. Holder app displays *what will be proven and what will be revealed*, and requests consent.
 4. Holder app generates the proof **entirely on-device**.
 5. Holder app returns proof and public inputs to the platform.
@@ -212,7 +202,7 @@ Bob, whose income and portfolio both fall short of the EU regime's thresholds, a
 
 ### 7.6 Verifier experience
 
-- **PR-20** The platform SHALL define per-offering eligibility policy (regime, jurisdictions, cap).
+- **PR-20** The platform SHALL define per-offering eligibility policy (regime, jurisdictions).
 - **PR-21** The platform SHALL present a verification result traceable to an on-chain transaction.
 - **PR-22** The platform SHALL NOT be capable of storing attribute data, by construction.
 
@@ -239,7 +229,7 @@ Bob, whose income and portfolio both fall short of the EU regime's thresholds, a
 ### 8.3 On-chain verification
 
 - **TR-11** Verification SHALL occur on an EVM chain via a Groth16 verifier contract.
-- **TR-12** Registries SHALL maintain: valid-set root per epoch, sanctions root, authorised-firm root, jurisdiction allowlist root, and consumed nullifiers.
+- **TR-12** Registries SHALL maintain: valid-set root per epoch, sanctions root, jurisdiction allowlist root, and consumed nullifiers.
 - **TR-13** Nullifier replay within a scope SHALL be rejected on-chain.
 - **TR-14** Gas cost SHALL be measured per predicate configuration and projected across L1/L2 price points.
 - **TR-15** All chain interaction SHALL run against a local development chain.
@@ -341,7 +331,7 @@ Bob, whose income and portfolio both fall short of the EU regime's thresholds, a
 
 Five phases, each ending in a demonstrable deliverable. Requirements only — sequencing within a phase is left open.
 
-### Phase 1 — Foundations & Feasibility · ~4 weeks — done
+### Phase 1 — Foundations & Feasibility — done
 
 **Objective:** prove the toolchain works end-to-end and establish measurement capability.
 
@@ -359,27 +349,27 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 
 ---
 
-### Phase 2 — Credential & Eligibility Circuits · ~6 weeks
+### Phase 2 — Credential & Eligibility Circuits — done
 
 **Objective:** implement the credential and the full predicate logic.
 
 **Requirements**
 
-- F2.1 The credential SHALL bind all §2 attributes to a holder secret via a Poseidon commitment (TR-2).
-- F2.2 Circuits SHALL implement P1–P10 (P9 retired — §3).
-- F2.3 The EU 2-of-3 regime SHALL be satisfiable from a single credential (PR-13).
-- F2.4 The threshold-of-N predicate (P4) SHALL be implemented as a first-class construct.
+- F2.1 The credential SHALL bind all §2 attributes to a holder secret via a Poseidon commitment (TR-2). — done
+- F2.2 Circuits SHALL implement P1–P10 (P9 retired — §3). — done
+- F2.3 The EU 2-of-3 regime SHALL be satisfiable from a single credential (PR-13). — done
+- F2.4 The threshold-of-N predicate (P4) SHALL be implemented as a first-class construct. — done
 - F2.5 — *Retired,* along with P9 (§3): the investment ceiling requirement no longer applies now that scope is sophisticated/accredited investors only.
-- F2.6 Circuits SHALL be parameterised per TR-6.
-- F2.7 A test suite SHALL demonstrate correct acceptance and rejection across eligible, ineligible, boundary, and malformed inputs.
+- F2.6 Circuits SHALL be parameterised per TR-6. — done
+- F2.7 A test suite SHALL demonstrate correct acceptance and rejection across eligible, ineligible, boundary, and malformed inputs. — done
 
-**Deliverable D1 — Eligibility Circuit Suite:** parameterised circuits covering the EU regime, with a correctness test suite and constraint counts across the complexity dial.
+**Deliverable D1 — Eligibility Circuit Suite:** parameterised circuits covering the EU regime, with a correctness test suite and constraint counts across the complexity dial. — done
 
 **Acceptance:** eligible holders produce valid proofs and ineligible ones cannot, under the EU regime; constraint counts are documented per configuration.
 
 ---
 
-### Phase 3 — On-Chain Verification & Issuer Service · ~5 weeks
+### Phase 3 — On-Chain Verification & Issuer Service
 
 **Objective:** stand up the infrastructure that makes proofs meaningful.
 
@@ -399,7 +389,7 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 
 ---
 
-### Phase 4 — Holder App & End-to-End Demo · ~7 weeks
+### Phase 4 — Holder App & End-to-End Demo
 
 **Objective:** the complete system, demonstrable to a non-technical observer.
 
@@ -419,7 +409,7 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 
 ---
 
-### Phase 5 — Measurement & Synthesis · ~5 weeks
+### Phase 5 — Measurement & Synthesis
 
 **Objective:** convert the working system into a defensible, publishable result.
 
@@ -442,18 +432,13 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 
 ### Summary
 
-| Phase | Deliverable | Duration | Cumulative | Status |
-| --- | --- | --- | --- | --- |
-| 1 | D0 — Feasibility Baseline | ~4 wks | ~1 mo | done |
-| 2 | D1 — Eligibility Circuit Suite | ~6 wks | ~2.3 mo | |
-| 3 | D2 — Verification Infrastructure | ~5 wks | ~3.5 mo | |
-| 4 | D3 — Working System | ~7 wks | ~5.1 mo | |
-| 5 | D4 — Synthesis Report | ~5 wks | ~6.3 mo | |
-
-**Scope reduction levers, in order of preference:**
-
-1. Reduce the complexity dial range in Phase 5.
-2. Reduce the platform frontend to a minimal interface.
+| Phase | Deliverable | Status |
+| --- | --- | --- |
+| 1 | D0 — Feasibility Baseline | done |
+| 2 | D1 — Eligibility Circuit Suite | done |
+| 3 | D2 — Verification Infrastructure | |
+| 4 | D3 — Working System | |
+| 5 | D4 — Synthesis Report | |
 
 ---
 
@@ -461,7 +446,7 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 
 To be stated plainly in all output.
 
-- **L1 — Issuer trust is out of scope.** The author operates both issuer and holder. The hardest real-world problem — why anyone should trust the issuer's attestation — is not addressed. The contribution is cryptographic and architectural, not trust bootstrapping.
+- **L1 — Issuer trust is out of scope.** A single operator runs both issuer and holder. The hardest real-world problem — why anyone should trust the issuer's attestation — is not addressed. The contribution is cryptographic and architectural, not trust bootstrapping.
 - **L2 — Revocation has a bounded exposure window** by construction (§4.1).
 - **L3 — Cross-scope cumulative caps cannot be enforced** without linkage (§4.2).
 - **L4 — Regulatory modelling is a good-faith approximation**, not legal compliance.
@@ -470,7 +455,7 @@ To be stated plainly in all output.
 - **L7 — EU regime is 2-of-2, not 2-of-3.** Condition (c) (market activity, P5) was dropped as the most expensive sub-condition. The threshold predicate is built as a generic M-of-N construct (F2.4), so this is a configuration limit rather than an architectural one — but the MVP result characterises 2-of-2, not the full regulation.
 - **L8 — Spanish regime not implemented.** Retained in §2.1 as regulatory reference only. Its unique predicate, P3 (advisory-contract membership), is consequently out of scope too.
 - **L9 — Merkle trees have fixed capacity, set by depth at deploy time.** Every tree in this system (valid-set, jurisdiction, sanctions) holds at most `2^depth` leaves; exceeding it means a full rebuild at greater depth, not an incremental add. This is cheaper to absorb than it sounds — F1.4's baseline shows constraint cost scales linearly with depth while capacity scales exponentially (depth 32 costs ~2× depth 16's constraints for 65,536× the capacity), so depth 20 alone (Phase 2's default) already covers over a million entries at already-measured cost. The actual open question is operational, not cryptographic: no validated estimate exists for real-world sanctions/jurisdiction list sizes against that ceiling, and a rebuild event (new root, all cached low-leaf lookups invalidated) has no defined procedure yet.
-- **L10 — Root and leaf authenticity rest entirely on registry access control, not a signature.** TR-3 originally called for the issuer to sign published roots with EdDSA; this PoC retires that and relies solely on the `EligibilityRegistry` contract restricting leaf insertion and root publication to the issuer's on-chain address. This is sufficient under L1's trust model (the author operates both issuer and holder, and issuer honesty is already assumed) but means authenticity depends entirely on that one contract's access-control logic being correct — there is no independent, contract-logic-free way to verify a root came from the issuer, the way a signature would provide. A real multi-operator deployment would need to reconsider this.
+- **L10 — Root and leaf authenticity rest entirely on registry access control, not a signature.** TR-3 originally called for the issuer to sign published roots with EdDSA; this PoC retires that and relies solely on the `EligibilityRegistry` contract restricting leaf insertion and root publication to the issuer's on-chain address. This is sufficient under L1's trust model (a single operator runs both issuer and holder, and issuer honesty is already assumed) but means authenticity depends entirely on that one contract's access-control logic being correct — there is no independent, contract-logic-free way to verify a root came from the issuer, the way a signature would provide. A real multi-operator deployment would need to reconsider this.
 
 ---
 
@@ -478,7 +463,7 @@ To be stated plainly in all output.
 
 **Excluded from the MVP:**
 
-- Additional proving libraries. *Post-MVP option; deliberately excluded to protect completion.*
+- Additional proving libraries. *Post-MVP option.*
 - Android or any second device.
 - Legacy credential formats (passports, national eID, RSA/ECDSA-P256 issuance).
 - Confidential amounts or encrypted balances.
