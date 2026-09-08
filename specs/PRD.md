@@ -1,4 +1,4 @@
-# Private Investor Eligibility — Project Scope
+# Private Investor Eligibility — PRD
 
 ## A greenfield ZK credential system, proven on-device, verified on-chain
 
@@ -6,17 +6,17 @@
 
 ## 1. Executive Summary
 
-**What this is.** A working, end-to-end system in which a person proves on their own phone that they qualify as a sophisticated investor under EU rules — *without disclosing income, portfolio, employment, or identity* — and an investment platform verifies that claim on-chain, learning nothing beyond a yes/no.
+**What this is.** An end-to-end system in which a person proves on their own phone that they qualify as a sophisticated investor under EU rules — *without disclosing income, portfolio, employment, or identity* — and an investment platform verifies that claim on-chain, learning nothing beyond a yes/no.
 
 **The problem.** Investing through a regulated platform today means surrendering payslips, bank certificates, tax returns and identity documents to establish a single boolean: *may this person invest, and up to how much?* The platform then stores that dossier permanently — a compliance burden for them and a standing breach risk for the investor. The regulation only ever required the boolean.
 
-**Why now, and why greenfield.** RWA tokenization platforms are building new credential infrastructure from scratch. There is no legacy signature format to inherit, so ZK-friendly primitives can be selected at issuance — which is the correct engineering decision, not a shortcut. Every architectural layer is designed from zero: credential schema, predicate circuits, revocation, unlinkability, on-chain verification.
+**Why now, and why greenfield.** RWA tokenization platforms are building new credential infrastructure from scratch. There is no legacy signature format to inherit, so ZK-friendly primitives can be selected at issuance. Every architectural layer is designed from zero: credential schema, predicate circuits, revocation, unlinkability, on-chain verification.
 
 **Scope discipline.** The MVP is deliberately narrowed to **one proving library (circom), one device (iPhone 14 Pro), one machine (MacBook Pro 2024)**. Extension to a second library is a post-MVP option.
 
 **The research question.** *Can a greenfield, unlinkable, revocable eligibility credential be proven entirely on a four-year-old consumer phone and verified on-chain — and what does it cost as predicate complexity scales?*
 
-**Primary contribution.** A **systems and architecture** contribution, not a benchmark: a complete privacy-preserving compliance flow that works, with honest measurement of what it costs on real hardware and honest documentation of which problems remain unsolved.
+**Primary contribution.** A **systems and architecture** contribution: a complete privacy-preserving compliance flow that works, with honest measurement of what it costs on real hardware and honest documentation of which problems remain unsolved.
 
 **Success in one sentence.** A person on an iPhone gains access to a tokenized investment offering by proving eligibility, uses the same credential again without the platform being able to link the two events, and is correctly refused after the issuer revokes them.
 
