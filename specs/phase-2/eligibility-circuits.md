@@ -1,7 +1,7 @@
 # Phase 2 — Eligibility Circuit Suite
 
-**Satisfies:** F2.1–F2.7 · **Builds against:** [`../credential-protocol.md`](../credential-protocol.md) (design, already complete — this document is the implementation plan, not a re-derivation)
-**Status:** Draft for review — no implementation exists yet.
+**Satisfies:** F2.1–F2.8 · **Builds against:** [`../credential-protocol.md`](../credential-protocol.md) (design, already complete — this document is the implementation plan, not a re-derivation)
+**Status:** Implemented and verified — all circuits pass their full test suite and a real setup→prove→verify pass; see [`../../circuits/credential/PHASE2_RESULTS.md`](../../circuits/credential/PHASE2_RESULTS.md).
 
 > Where Phase 1's `credential-protocol.md` defines *what* the credential, predicates, and nullifier are, this document defines *how they become circom files*: module layout, parameterization, and the test matrix. Design decisions already settled in `credential-protocol.md` are referenced, not repeated.
 
@@ -165,3 +165,18 @@ No other new tools — everything else (circom 2.2.3, the Poseidon/Merkle/compar
 | F2.6 | §2 — three named configurations sharing depth-parameterized sub-templates |
 | F2.7 | §7 — 21-case matrix via `circom_tester`, derived from the threat model's attack table (plus the unlinkability property and three boundary cases that aren't attack-table rows) |
 | D1 deliverable | All of the above, plus §7's end-to-end setup+prove+verify pass per configuration, with constraint counts and timings recorded in `circuits/credential/PHASE2_RESULTS.md` |
+| F2.8 | §10 — `leaf_binding.circom`, addendum below |
+
+---
+
+## 10. Addendum — F2.8 Leaf-Binding Proof
+
+Added after design review surfaced a real gap (`credential-protocol.md §4.3`): the issuer independently recomputing `attr_hash` (§3 above) confirms what the value *should* be, but not that the `leaf` a holder actually submits was built from it — since `leaf = Poseidon(holder_secret, attr_hash)` and the issuer never learns `holder_secret` (PR-5), it has no way to check that equation directly. A dishonest holder could get one set of attributes verified, then commit a leaf built from different, fabricated ones, undetected.
+
+**`circuits/credential/leaf_binding.circom`** — a proof of knowledge of `holder_secret` such that `Poseidon(holder_secret, attr_hash) = leaf`, with `attr_hash` and `leaf` as public inputs. Structurally identical to `circuits/poseidon-baseline`'s arity-2 circuit (F1.4), just with the output forced equal to a public `leaf` instead of exposed freely — confirmed by compiling to exactly the same 517 constraints. No new template file needed elsewhere; this is a single self-contained circuit, run once per issuance rather than composed into the eligibility circuits.
+
+**Tests** (`test/leaf_binding.test.js`, 4 cases): Alice's real `(holder_secret, attr_hash, leaf)` triple accepted; a fabricated `attr_hash` (claiming a *different* verified attribute set than the one actually hashed into `leaf`) rejected — the exact attack this circuit exists to catch; a fabricated `leaf` rejected; a wrong `holder_secret` against an otherwise-real pair rejected.
+
+**End-to-end validation**: setup→prove→verify pass, same methodology as §7, recorded in `PHASE2_RESULTS.md` alongside the three eligibility configurations.
+
+**Where it runs**: at issuance, off-chain — issuance already happens over local HTTP (F3.3), not on-chain, so the issuer verifies this proof itself before inserting the leaf. No on-chain verifier or gas cost for this step.

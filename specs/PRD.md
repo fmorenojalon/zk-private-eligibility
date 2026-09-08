@@ -125,10 +125,11 @@ Five flows define the system's behaviour.
 ### Flow 1 — Credential Issuance
 
 1. Holder requests a credential from the issuer, submitting attribute values.
-2. Issuer verifies attributes out-of-band *(simulated — see §11)*.
-3. Holder computes a commitment binding the attributes to a holder-controlled secret that never leaves the device, and sends the issuer the opaque commitment for insertion into the valid-set tree (access-controlled to the issuer's address — L10).
-4. Issuer publishes the updated root for the current epoch.
-5. Holder receives the credential and Merkle path; stores them on-device.
+2. Issuer verifies attributes out-of-band *(simulated — see §11)* and independently derives the expected commitment value from what it verified.
+3. Holder computes a commitment binding the attributes to a holder-controlled secret that never leaves the device, generates a proof binding that commitment to the issuer's verified data without revealing the secret (PR-23), and sends the issuer both.
+4. Issuer verifies the proof, then inserts the commitment into the valid-set tree (access-controlled to the issuer's address — L10).
+5. Issuer publishes the updated root for the current epoch.
+6. Holder receives the credential and Merkle path; stores them on-device.
 
 **Property:** the holder secret is generated on-device and never leaves it.
 
@@ -206,6 +207,10 @@ Bob, whose income and portfolio both fall short of the EU regime's thresholds, a
 - **PR-21** The platform SHALL present a verification result traceable to an on-chain transaction.
 - **PR-22** The platform SHALL NOT be capable of storing attribute data, by construction.
 
+### 7.7 Issuance integrity
+
+- **PR-23** The issuer SHALL verify that a submitted credential commitment is bound to the specific attribute values the issuer verified, before inserting it, without the issuer learning the holder secret.
+
 ---
 
 ## 8. Technical Requirements
@@ -218,6 +223,7 @@ Bob, whose income and portfolio both fall short of the EU regime's thresholds, a
 - **TR-4** Set membership SHALL use Merkle inclusion proofs; set non-membership SHALL use a documented construction.
 - **TR-5** Circuit-specific trusted setup SHALL use a public Powers-of-Tau ceremony file; setup time and artifact size SHALL be recorded.
 - **TR-6** Circuits SHALL be parameterised over Merkle depth and predicate count to support the complexity dial.
+- **TR-23** The issuer SHALL verify a zero-knowledge proof binding a submitted credential commitment to the issuer-verified attribute hash before insertion (PR-23) — a circuit reusing the same Poseidon/Groth16 primitives as TR-1/TR-2, not a new cryptographic construction.
 
 ### 8.2 On-device proving
 
@@ -321,7 +327,7 @@ Bob, whose income and portfolio both fall short of the EU regime's thresholds, a
 
 | Boundary | Crosses it | Never crosses it |
 | --- | --- | --- |
-| Device → Issuer | attribute values *(issuance only)*, commitment | holder secret |
+| Device → Issuer | attribute values *(issuance only)*, commitment, leaf-binding proof (PR-23) | holder secret |
 | Device → Platform | proof, public inputs, nullifier | attribute values, holder secret, credential |
 | Platform → Chain | proof, public inputs | anything holder-identifying |
 
@@ -362,6 +368,7 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 - F2.5 — *Retired,* along with P9 (§3): the investment ceiling requirement no longer applies now that scope is sophisticated/accredited investors only.
 - F2.6 Circuits SHALL be parameterised per TR-6. — done
 - F2.7 A test suite SHALL demonstrate correct acceptance and rejection across eligible, ineligible, boundary, and malformed inputs. — done
+- F2.8 A leaf-binding proof SHALL let the issuer verify a submitted commitment is bound to the issuer-verified attribute hash, without learning the holder secret (PR-23, TR-23) — added as an addendum after a design review surfaced the gap; see `credential-protocol.md §4.3`. — done
 
 **Deliverable D1 — Eligibility Circuit Suite:** parameterised circuits covering the EU regime, with a correctness test suite and constraint counts across the complexity dial. — done
 
