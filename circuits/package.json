@@ -3,9 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "description": "Phase 1 baseline circuits and Phase 2 credential/predicate circuits (circom).",
+  "scripts": {
+    "test": "mocha credential/test/*.test.js --timeout 60000"
+  },
   "devDependencies": {
+    "circom_tester": "0.0.24",
     "circomlib": "github:iden3/circomlib#35e54ea21da3e8762557234298dbb553c175ea8d",
     "circomlibjs": "0.1.7",
+    "mocha": "12.0.0",
     "snarkjs": "0.7.6"
   }
 }

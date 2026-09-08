@@ -28,7 +28,7 @@ circuits/credential/
     └── eligibility.test.js       circom_tester + Mocha suite (F2.7)
 ```
 
-P5/P8 need no new file at all — both `include` `circuits/merkle-baseline/template.circom` directly and instantiate `MerkleInclusion` against their own root, reused as-is rather than redefined. P10's nullifier is a single inline `Poseidon(3)` call in each composite circuit file, small enough that a dedicated file would be pure overhead.
+P5/P8 need no new file at all — both `include` `circuits/merkle-baseline/template.circom` directly and instantiate `MerkleBaseline` against their own root, reused as-is rather than redefined. P10's nullifier is a single inline `Poseidon(3)` call in each composite circuit file, small enough that a dedicated file would be pure overhead.
 
 **Per-primitive file separation, not one shared template file.** Follows Phase 1's own convention (`range-baseline/`, `merkle-baseline/`, `eddsa-baseline/` as distinct directories, each scoped to one primitive) rather than bundling every new template into a single `predicates.circom`. Each of `range_predicates.circom`, `threshold.circom`, and `indexed_nonmembership.circom` corresponds to one distinct construction with its own reasoning and, eventually, its own constraint-count story — keeping them separate mirrors how Phase 1 measured Poseidon, Merkle, range, and EdDSA as four standalone circuits rather than one combined one, and avoids growing a single file to ten templates of increasingly unrelated shape as Phase 5 adds more.
 
@@ -38,7 +38,7 @@ P5/P8 need no new file at all — both `include` `circuits/merkle-baseline/templ
 
 Phase 5's fuller complexity-dial sweep (F5.1) can add more named configurations the same way, reusing the same sub-template files.
 
-**Depth is fixed at 20 for Phase 2's own functional testing** — the middle of F1.4's measured range (16/20/32) — not swept here. `MerkleInclusion`, included directly from `circuits/merkle-baseline/template.circom`, remains depth-parameterized there already, so Phase 5 can instantiate 16 and 32 without redesigning anything; Phase 2 just doesn't need more than one depth to prove correctness.
+**Depth is fixed at 20 for Phase 2's own functional testing** — the middle of F1.4's measured range (16/20/32) — not swept here. `MerkleBaseline`, included directly from `circuits/merkle-baseline/template.circom`, remains depth-parameterized there already, so Phase 5 can instantiate 16 and 32 without redesigning anything; Phase 2 just doesn't need more than one depth to prove correctness.
 
 ---
 
@@ -59,15 +59,15 @@ Each predicate from `credential-protocol.md §5` becomes an independent, indepen
 | P1, P2 | `RangeCheck` (two instances: income≥60000, portfolio>100000) | `range_predicates.circom` | `circuits/range-baseline`'s `GreaterEqThan` pattern |
 | P3 | `RangeCheck` (two instances, OR'd: financial_sector_months≥12 ∨ executive_months≥12) | `range_predicates.circom` | same |
 | P4 | `ThresholdOfN(M, N)` over `[condA, condB]`, `M=2, N=2` | `threshold.circom` | `credential-protocol.md §5.2`'s spec |
-| P5 | `MerkleInclusion(depth)` against `jurisdictionRoot` | — included directly from `circuits/merkle-baseline/template.circom` | `circuits/merkle-baseline`'s `template.circom`, reused as-is |
+| P5 | `MerkleBaseline(depth)` against `jurisdictionRoot` | — included directly from `circuits/merkle-baseline/template.circom` | `circuits/merkle-baseline`'s `template.circom`, reused as-is |
 | P6 | `IndexedNonMembership` against `sanctionsRoot` — takes the low leaf's `(value, nextValue, nextIndex)` triple plus its Merkle path, not a bare value | `indexed_nonmembership.circom` | new — `credential-protocol.md §5.3`'s embedded-next-pointer construction, not yet built anywhere |
 | P7 | inline `GreaterEqThan(expiry_epoch, currentEpoch)` | `range_predicates.circom` | — |
-| P8 | `MerkleInclusion(depth)` against `validSetRoot` (on `leaf`) | — included directly from `circuits/merkle-baseline/template.circom` | `circuits/merkle-baseline`'s `template.circom`, reused as-is |
+| P8 | `MerkleBaseline(depth)` against `validSetRoot` (on `leaf`) | — included directly from `circuits/merkle-baseline/template.circom` | `circuits/merkle-baseline`'s `template.circom`, reused as-is |
 | P10 | `nullifier = Poseidon(holder_secret, epoch, scope)` | inline in `circuit_p1only.circom`/`circuit_full.circom` | direct Poseidon call, no sub-template needed |
 
 *P9 (investment ceiling) is retired — removed from scope, `credential-protocol.md §5`. Not implemented here.*
 
-`MerkleInclusion` gets instantiated **twice** in `circuit_full.circom` (P5 against `jurisdictionRoot`, P8 against `validSetRoot`) — same template, different root/path per call. `IndexedNonMembership` (P6) is the one predicate in this table with no existing baseline to reuse — genuinely new circuit logic, not an adaptation of `circuits/{range,merkle,eddsa}-baseline`.
+`MerkleBaseline` gets instantiated **twice** in `circuit_full.circom` (P5 against `jurisdictionRoot`, P8 against `validSetRoot`) — same template, different root/path per call. `IndexedNonMembership` (P6) is the one predicate in this table with no existing baseline to reuse — genuinely new circuit logic, not an adaptation of `circuits/{range,merkle,eddsa}-baseline`.
 
 ---
 
