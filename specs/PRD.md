@@ -108,7 +108,7 @@ The scenario the entire system exists to demonstrate, in three beats.
 
 **Setup.** *Alice* holds a credential issued by **Banco Demo** attesting her financial standing. **Inmobiliaria Tokenizada** Platform issues a tokenized Spanish commercial real-estate offering restricted to EU sophisticated investors in permitted jurisdictions.
 
-**Beat 1 — Privacy.** Alice opens the offering, is asked to prove eligibility, and her phone generates a proof on-device. The platform verifies it on-chain and grants access. *The platform learns only that she is eligible and a scope-bound nullifier — not her income, portfolio, employment, jurisdiction detail, identity, or which credential she holds.*
+**Beat 1 — Privacy.** Alice opens the offering, is asked to prove eligibility, and her phone generates a proof on-device. This is possible because of Banco Demo's earlier issuance (Flow 1): Alice already holds her attested attributes and her own secret, and a Merkle path showing her credential's commitment sits in Banco Demo's currently-published root. The platform verifies the proof on-chain and grants access. *The platform learns only that she is eligible and a scope-bound nullifier — not her income, portfolio, employment, jurisdiction detail, identity, or which credential she holds.*
 
 **Beat 2 — Unlinkability.** Alice invests in a second, unrelated offering using the same credential. *The two presentations cannot be correlated by the platform or by any chain observer* — each offering is its own scope (§4.2), so the two nullifiers are cryptographically unrelated to each other and to Alice's identity.
 
@@ -144,7 +144,7 @@ Five flows define the system's behaviour.
 4. Holder app generates the proof **entirely on-device**.
 5. Holder app returns proof and public inputs to the platform.
 6. Platform submits the proof for on-chain verification.
-7. Chain verifies, checks the nullifier is unused, records it, and returns a result.
+7. Chain verifies the proof cryptographically, cross-checks its public inputs (`validSetRoot`, `jurisdictionRoot`, `scope`) against this offering's own canonical values — proof validity alone doesn't confirm the proof was generated *for this offering* (`credential-protocol.md §5.4`) — checks the nullifier is unused, records it, and returns a result.
 8. Platform grants or refuses access.
 
 **Property:** no attribute value is transmitted at any point.
@@ -391,7 +391,7 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 - F3.3 The issuer service SHALL expose issuance and revocation over local HTTP, and SHALL publish roots to the chain; both leaf insertion and root publication SHALL be restricted to the issuer's on-chain address (access control — TR-3 retired, L10).
 - F3.4 The issuer SHALL maintain the valid-set tree with epoch rotation per §4.1.
 - F3.5 Revocation SHALL cause proof failure from the following epoch (PR-10) without holder cooperation (PR-9).
-- F3.6 Per-offering eligibility policy SHALL be configurable on-chain (PR-20).
+- F3.6 Per-offering eligibility policy SHALL be configurable on-chain (PR-20), and each offering's access grant SHALL verify a submitted proof's `jurisdictionRoot` and `scope` public inputs match that offering's own canonical values — cryptographic proof validity alone does not confirm a proof was generated for *this* offering (`credential-protocol.md §5.4`).
 - F3.7 Gas SHALL be measured across predicate configurations (TR-14).
 
 **Deliverable D2 — Verification Infrastructure:** deployed contracts, working issuer service, functioning epoch rotation and revocation, gas measurements.
