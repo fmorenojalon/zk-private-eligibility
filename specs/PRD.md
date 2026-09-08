@@ -124,13 +124,15 @@ Five flows define the system's behaviour.
 
 ### Flow 1 — Credential Issuance
 
-1. Holder requests a credential from the issuer (customer identification handled out-of-band, simulated — see §11).
-2. Issuer looks up its own authoritative records for this holder and discloses the attribute values — the issuer is the *source* of this data, not a checker of a holder's self-reported claims.
-3. Issuer computes the expected commitment value from those same records and sends it alongside.
-4. Holder computes a commitment binding the attributes to a holder-controlled secret that never leaves the device, generates a proof binding that commitment to the issuer's value without revealing the secret (PR-23), and sends the issuer both.
-5. Issuer verifies the proof against the value it computed in step 3, then inserts the commitment into the valid-set tree (access-controlled to the issuer's address — L10).
-6. Issuer publishes the updated root for the current epoch.
-7. Holder receives the credential and Merkle path; stores them on-device.
+**Credential** here means the 9 issuer-attested attribute values paired with the holder's `holder_secret` — nothing derived, nothing else. `attr_hash` and `leaf` are computed *from* the credential; the Merkle path is evidence *about* it.
+
+1. Holder initiates issuance with the issuer (customer identification handled out-of-band, simulated — see §11).
+2. Issuer looks up its own authoritative records for this holder and discloses the 9 attribute values — the issuer is the *source* of this data, not a checker of a holder's self-reported claims.
+3. Issuer computes the expected attribute hash (`attr_hash`) from those same records and sends it alongside.
+4. Holder now has both the attribute values and a holder-controlled secret that never leaves the device — the credential is assembled. Holder computes `attr_hash = Poseidon(9 attribute values)` — the same hash the issuer just computed in step 3, which should match — then computes the commitment `leaf = Poseidon(holder_secret, attr_hash)`, binding the credential to a secret only the holder knows. Holder generates a proof that `leaf` was genuinely built from this `attr_hash`, without revealing the secret (PR-23, `credential-protocol.md §4.3`), and sends the issuer `leaf` and the proof.
+5. Issuer verifies the proof against the `attr_hash` it computed in step 3, then inserts the commitment into the valid-set tree (access-controlled to the issuer's address — L10).
+6. Issuer publishes the updated root for the current epoch and returns the resulting Merkle path to the holder.
+7. Holder stores the credential and Merkle path on-device.
 
 **Property:** the holder secret is generated on-device and never leaves it.
 
@@ -328,7 +330,7 @@ Bob, whose income and portfolio both fall short of the EU regime's thresholds, a
 
 | Boundary | Crosses it | Never crosses it |
 | --- | --- | --- |
-| Issuer → Device | attribute values, expected commitment value *(issuance only)* | — |
+| Issuer → Device | attribute values, expected attribute hash *(issuance only)* | — |
 | Device → Issuer | commitment, leaf-binding proof (PR-23) | holder secret, attribute values *(never re-disclosed, only consumed locally)* |
 | Device → Platform | proof, public inputs, nullifier | attribute values, holder secret, credential |
 | Platform → Chain | proof, public inputs | anything holder-identifying |

@@ -67,7 +67,7 @@ Four standalone circuits, no credential logic — pure primitive measurement:
 
 | Circuit | Parameters tested | Purpose |
 | --- | --- | --- |
-| `poseidon-baseline` | arity 2, arity 10 | matched the two Poseidon arities used in the credential commitment at the time ([credential-protocol.md §4.2](../credential-protocol.md#42-commitment-structure)); the commitment's arity later dropped to 9 when P9 was retired, so arity 10 is now the closest reference point rather than an exact match — see that section for detail |
+| `poseidon-baseline` | arity 2, arity 10 | matched the two Poseidon arities used in the credential commitment at the time ([credential-protocol.md §4.2](../credential-protocol.md#42-commitment-structure)); `attr_hash`'s arity later dropped to 9 when P9 was retired, so arity 10 is now the closest reference point rather than an exact match — see that section for detail |
 | `merkle-baseline` | depth ∈ {16, 20, 32} | matches TR-6's complexity dial; reused directly for P5/P6/P8 in Phase 2 |
 | `range-baseline` | single comparator over a 64-bit value | matches the income/portfolio field sizes used in P1/P2 |
 | `eddsa-baseline` | single EdDSA-Poseidon signature verification | standalone reference number per F1.4 — **not** used in the Phase 2 credential circuit per [credential-protocol.md §3](../credential-protocol.md#3-issuer-attestation-membership-only-design-decision), but still required baseline data |

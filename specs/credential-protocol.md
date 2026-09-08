@@ -202,7 +202,7 @@ Reuses PRD §9.4 verbatim — repeated here for a self-contained threat model:
 
 | Boundary | Crosses it | Never crosses it |
 | --- | --- | --- |
-| Issuer → Device | attribute values, expected commitment value *(issuance only)* | — |
+| Issuer → Device | attribute values, expected attribute hash *(issuance only)* | — |
 | Device → Issuer | commitment, leaf-binding proof (§4.3) | holder secret, attribute values *(never re-disclosed, only consumed locally)* |
 | Device → Platform | proof, public inputs, nullifier | attribute values, holder secret, credential |
 | Platform → Chain | proof, public inputs | anything holder-identifying |
