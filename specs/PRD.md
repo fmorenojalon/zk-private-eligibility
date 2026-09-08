@@ -124,12 +124,13 @@ Five flows define the system's behaviour.
 
 ### Flow 1 — Credential Issuance
 
-1. Holder requests a credential from the issuer, submitting attribute values.
-2. Issuer verifies attributes out-of-band *(simulated — see §11)* and independently derives the expected commitment value from what it verified.
-3. Holder computes a commitment binding the attributes to a holder-controlled secret that never leaves the device, generates a proof binding that commitment to the issuer's verified data without revealing the secret (PR-23), and sends the issuer both.
-4. Issuer verifies the proof, then inserts the commitment into the valid-set tree (access-controlled to the issuer's address — L10).
-5. Issuer publishes the updated root for the current epoch.
-6. Holder receives the credential and Merkle path; stores them on-device.
+1. Holder requests a credential from the issuer (customer identification handled out-of-band, simulated — see §11).
+2. Issuer looks up its own authoritative records for this holder and discloses the attribute values — the issuer is the *source* of this data, not a checker of a holder's self-reported claims.
+3. Issuer computes the expected commitment value from those same records and sends it alongside.
+4. Holder computes a commitment binding the attributes to a holder-controlled secret that never leaves the device, generates a proof binding that commitment to the issuer's value without revealing the secret (PR-23), and sends the issuer both.
+5. Issuer verifies the proof against the value it computed in step 3, then inserts the commitment into the valid-set tree (access-controlled to the issuer's address — L10).
+6. Issuer publishes the updated root for the current epoch.
+7. Holder receives the credential and Merkle path; stores them on-device.
 
 **Property:** the holder secret is generated on-device and never leaves it.
 
@@ -327,7 +328,8 @@ Bob, whose income and portfolio both fall short of the EU regime's thresholds, a
 
 | Boundary | Crosses it | Never crosses it |
 | --- | --- | --- |
-| Device → Issuer | attribute values *(issuance only)*, commitment, leaf-binding proof (PR-23) | holder secret |
+| Issuer → Device | attribute values, expected commitment value *(issuance only)* | — |
+| Device → Issuer | commitment, leaf-binding proof (PR-23) | holder secret, attribute values *(never re-disclosed, only consumed locally)* |
 | Device → Platform | proof, public inputs, nullifier | attribute values, holder secret, credential |
 | Platform → Chain | proof, public inputs | anything holder-identifying |
 

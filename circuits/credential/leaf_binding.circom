@@ -3,17 +3,18 @@ pragma circom 2.2.3;
 include "../node_modules/circomlib/circuits/poseidon.circom";
 
 // Phase 2 addendum (F2.8, PR-23, TR-23). Closes a soundness gap found
-// during design review: the issuer independently recomputing attr_hash
-// (credential-protocol.md §4.2) only confirms what attr_hash SHOULD be -
-// it says nothing about whether the `leaf` a holder actually submits was
-// built from that value, since leaf = Poseidon(holder_secret, attr_hash)
-// and the issuer never learns holder_secret (PR-5). A dishonest holder
-// could verify one set of attributes, then commit a leaf built from
-// different, fabricated ones, undetected.
+// during design review: the issuer computes attr_hash directly from its
+// own records and sends it to the holder (Flow 1, credential-protocol.md
+// §4.2) - that only confirms what attr_hash IS, not whether the `leaf`
+// the holder hands back was built from it, since
+// leaf = Poseidon(holder_secret, attr_hash) and the issuer never learns
+// holder_secret (PR-5). A dishonest holder could receive one attr_hash
+// from the issuer, then commit a leaf built from a different, fabricated
+// one, undetected.
 //
 // This circuit is the fix: proof of knowledge of holder_secret such that
 // Poseidon(holder_secret, attr_hash) = leaf, for attr_hash and leaf as
-// PUBLIC inputs fixed to the issuer's own verified value and the
+// PUBLIC inputs fixed to the issuer's own attested value and the
 // commitment being submitted. The issuer verifies this once per
 // issuance, off-chain (F3.3 - issuance is local HTTP, not on-chain), and
 // only inserts the leaf if it holds. holder_secret never appears as
