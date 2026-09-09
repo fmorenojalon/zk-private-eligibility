@@ -2,6 +2,8 @@
 
 A greenfield zero-knowledge credential system: a person proves on their own phone that they qualify as a sophisticated investor under EU rules — without disclosing income, portfolio, employment, or identity — and an investment platform verifies that claim on-chain, learning nothing beyond a yes/no. Solo applied-research PoC. Full rationale in [`specs/PRD.md`](specs/PRD.md).
 
+**Methodology.** Built spec-first, in collaboration with an AI coding agent — every phase's design in [`specs/`](specs/) was written and reviewed before implementation, then checked again against it. [`specs/PRD.md` §10](specs/PRD.md) is the phase-by-phase record.
+
 ## Start here
 
 | I want to... | Go to |

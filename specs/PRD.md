@@ -38,7 +38,7 @@ Qualifies on **any one** of:
 
 ### 2.2 EU — *sophisticated investor* (ECSPR 2020/1503, Annex II)
 
-Qualifies on **at least two of three**:
+Qualifies on **at least two of three** criteria in the full regulation. This MVP implements the first two below; the third (market activity) is dropped for scope reasons — see §2.3 and L7.
 
 | # | Criterion | Threshold |
 | --- | --- | --- |
@@ -463,8 +463,8 @@ To be stated plainly in all output.
 - **L4 — Regulatory modelling is a good-faith approximation**, not legal compliance.
 - **L5 — Single device, single library.** Results characterise circom/Groth16 on an A16-class device. No claim is made about other stacks or hardware.
 - **L6 — Not production-hardened.** No security audit, no key management discipline, no adversarial testing.
-- **L7 — EU regime is 2-of-2, not 2-of-3.** Condition (c) (market activity, P5) was dropped as the most expensive sub-condition. The threshold predicate is built as a generic M-of-N construct (F2.4), so this is a configuration limit rather than an architectural one — but the MVP result characterises 2-of-2, not the full regulation.
-- **L8 — Spanish regime not implemented.** Retained in §2.1 as regulatory reference only. Its unique predicate, P3 (advisory-contract membership), is consequently out of scope too.
+- **L7 — EU regime is 2-of-2, not 2-of-3.** Condition (c) (market activity) was dropped as the most expensive sub-condition — it was never implemented, so it has no P-number in §3's table. The threshold predicate is built as a generic M-of-N construct (F2.4), so this is a configuration limit rather than an architectural one — but the MVP result characterises 2-of-2, not the full regulation.
+- **L8 — Spanish regime not implemented.** Retained in §2.1 as regulatory reference only. Its unique predicate, advisory-contract membership, is consequently out of scope too — it was never implemented either, so it likewise has no P-number.
 - **L9 — Merkle trees have fixed capacity, set by depth at deploy time.** Every tree in this system (valid-set, jurisdiction, sanctions) holds at most `2^depth` leaves; exceeding it means a full rebuild at greater depth, not an incremental add. This is cheaper to absorb than it sounds — F1.4's baseline shows constraint cost scales linearly with depth while capacity scales exponentially (depth 32 costs ~2× depth 16's constraints for 65,536× the capacity), so depth 20 alone (Phase 2's default) already covers over a million entries at already-measured cost. The actual open question is operational, not cryptographic: no validated estimate exists for real-world sanctions/jurisdiction list sizes against that ceiling, and a rebuild event (new root, all cached low-leaf lookups invalidated) has no defined procedure yet.
 - **L10 — Root and leaf authenticity rest entirely on registry access control, not a signature.** TR-3 originally called for the issuer to sign published roots with EdDSA; this PoC retires that and relies solely on the `EligibilityRegistry` contract restricting leaf insertion and root publication to the issuer's on-chain address. This is sufficient under L1's trust model (a single operator runs both issuer and holder, and issuer honesty is already assumed) but means authenticity depends entirely on that one contract's access-control logic being correct — there is no independent, contract-logic-free way to verify a root came from the issuer, the way a signature would provide. A real multi-operator deployment would need to reconsider this.
 

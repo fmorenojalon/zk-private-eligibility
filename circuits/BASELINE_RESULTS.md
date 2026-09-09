@@ -28,6 +28,8 @@ Now that the measurement harness exists ([measurement/README.md](../measurement/
 | verification_ms | 12.0 | 12 | 12.9 |
 | peak_memory_mb | 106 | 106 | 106.0 |
 
+**Note on p95 at n=3:** a 95th percentile computed from three samples isn't a meaningful tail-latency estimate — treat this column as roughly "the highest of three runs," not a real percentile. It becomes meaningful once more on-device runs accumulate; kept here now for the table's format to stay consistent as that happens, not because it's statistically load-bearing yet.
+
 **Note:** `witness_gen_ms` is 0 in every on-device record — mopro's `generate_circom_proof` bundles witness generation and proving into one opaque FFI call with no separate timing hook exposed to Swift, so the combined time is reported entirely under `proving_ms`. Splitting this would need changes to mopro-ffi itself, out of scope here.
 
 The other three circuits haven't been wired through mopro on-device yet (only `poseidon-baseline` has an iOS harness app built against it, per F1.1).
