@@ -1,5 +1,5 @@
 {
-  "name": "zk-poc-circuits",
+  "name": "private-eligibility-circuits",
   "version": "0.1.0",
   "private": true,
   "description": "Phase 1 baseline circuits and Phase 2 credential/predicate circuits (circom).",

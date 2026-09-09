@@ -33,7 +33,7 @@ F1.3 (TR-16–TR-19). See [specs/phase-1/measurement-harness.md](../specs/phase-
 
 5. **Analyze** (run from the repo root — `measurement/analyze/analyze.py` is a relative path, so if your shell is `cd`'d somewhere else, e.g. into an `.xcresult` bundle after inspecting test logs, the shell won't find the script and reports a confusing "No such file or directory" nested inside that unrelated path):
    ```sh
-   cd /path/to/zk-poc   # repo root
+   cd /path/to/repo-root   # wherever you cloned this - the local folder name need not match the repo name
    python3 measurement/analyze/analyze.py
    ```
    Reads `measurement/records/records.ndjson`, groups by `(circuit, parameters, device)`, and writes `measurement/reports/summary.{md,csv}`.

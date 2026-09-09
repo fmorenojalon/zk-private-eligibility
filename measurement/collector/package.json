@@ -1,5 +1,5 @@
 {
-  "name": "zk-poc-measurement-collector",
+  "name": "private-eligibility-measurement-collector",
   "version": "0.1.0",
   "private": true,
   "description": "Ingests structured measurement records synced from the device (TR-16). See specs/phase-1/measurement-harness.md.",
