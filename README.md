@@ -1,6 +1,6 @@
 # zk-poc
 
-A greenfield zero-knowledge credential system: a person proves on their own phone that they qualify as a sophisticated investor under EU rules — without disclosing income, portfolio, employment, or identity — and an investment platform verifies that claim on-chain, learning nothing beyond a yes/no. Solo applied-research proof of concept. Full rationale in [`specs/PRD.md`](specs/PRD.md).
+A greenfield zero-knowledge credential system: a person proves on their own phone that they qualify as a sophisticated investor under EU rules — without disclosing income, portfolio, employment, or identity — and an investment platform verifies that claim on-chain, learning nothing beyond a yes/no. Solo applied-research PoC. Full rationale in [`specs/PRD.md`](specs/PRD.md).
 
 ## Start here
 
@@ -10,10 +10,8 @@ A greenfield zero-knowledge credential system: a person proves on their own phon
 | Understand why these technologies, and how the pieces fit together | [`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md) |
 | See the cryptographic/protocol design — credential schema, predicates, nullifier, threat model | [`specs/credential-protocol.md`](specs/credential-protocol.md) |
 | Set up the toolchain and reproduce a clean build | [`TOOLCHAIN.md`](TOOLCHAIN.md) |
-| See what a given phase specifically requires | [`specs/phase-1/`](specs/phase-1/) (later phases get their own folder as they start) |
 | Run/verify the circuits and on-chain verifier | [`contracts/README.md`](contracts/README.md) |
 | Run the measurement harness | [`measurement/README.md`](measurement/README.md) |
-| See Phase 1's baseline circuit results | [`circuits/BASELINE_RESULTS.md`](circuits/BASELINE_RESULTS.md) |
 
 ## Repo layout
 
@@ -28,8 +26,8 @@ circuits/                 circom circuits + BASELINE_RESULTS.md
 contracts/                Foundry project: generated verifier, tests, README
 holder-app-ios/           iOS proving harness (mopro)
 measurement/              collector, analysis, records, README
-issuer-service/           Phase 3 — not started
-platform-backend/         Phase 3/4 — not started
-platform-frontend/        Phase 4 — not started
+issuer-service/           TBD
+platform-backend/         TBD
+platform-frontend/        TBD
 ```
 
