@@ -35,7 +35,7 @@ Recorded here for reproducibility (TR-19); every measurement record also carries
 Flat top-level packages, sibling directories:
 
 ```
-private-eligibility/
+zk-private-eligibility/
 ├── specs/                 (existing)
 ├── circuits/               circom sources: baseline primitives (Phase 1) + credential/predicate circuits (Phase 2)
 ├── contracts/               Foundry project: Groth16Verifier (generated), EligibilityRegistry, NullifierRegistry, OfferingPolicy

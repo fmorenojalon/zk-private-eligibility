@@ -1,4 +1,4 @@
-# private-eligibility
+# zk-private-eligibility
 
 A greenfield zero-knowledge credential system: a person proves on their own phone that they qualify as a sophisticated investor under EU rules — without disclosing income, portfolio, employment, or identity — and an investment platform verifies that claim on-chain, learning nothing beyond a yes/no. Solo applied-research PoC. Full rationale in [`specs/PRD.md`](specs/PRD.md).
 
