@@ -83,22 +83,22 @@ Each leaf in the valid-set tree is a Poseidon commitment over the holder's **com
 
 Naive revocation publishes revoked credential identifiers; proving you are absent from that list reveals your identifier and destroys unlinkability.
 
-**Approach:** a Merkle allowlist of valid credentials with epoch rotation. The holder proves membership in the current valid-set root without revealing which leaf. Revocation removes the leaf and rotates the root.
+A Merkle allowlist of valid credentials with epoch rotation. The holder proves membership in the current valid-set root without revealing which leaf. Revocation removes the leaf and rotates the root.
 
-**Accepted cost:** revocation takes effect only at an epoch boundary, creating a bounded exposure window. Holders must refresh their Merkle path on each root change.
+Revocation takes effect only at an epoch boundary, creating a bounded exposure window. Holders must refresh their Merkle path on each root change.
 
 ### 4.2 Cap Enforcement ⊗ Unlinkability
 
 Enforcing a cumulative cap requires per-investor state; unlinkability forbids correlating presentations. These requirements are in direct conflict.
 
-**Approach:** scope-bound nullifiers derived from (holder secret, epoch, scope). **Scope identifies a specific offering** — the tokenized investment product a holder is proving eligibility for (§5's real-estate offering, for instance). Each presentation to a given offering produces a nullifier unique to that (holder, offering, epoch) combination; presenting to a *different* offering produces an unrelated one.
+Scope-bound nullifiers derived from (holder secret, epoch, scope). Scope identifies a specific offering — the tokenized investment product a holder is proving eligibility for (§5's real-estate offering, for instance). Each presentation to a given offering produces a nullifier unique to that (holder, offering, epoch) combination; presenting to a *different* offering produces an unrelated one.
 
 This solves two problems at once:
 
 - **Reuse within one offering becomes detectable.** Without it, nothing stops a holder from presenting eligibility to the same offering an unlimited number of times, inflating their effective allocation past whatever a single investor is meant to receive. If Alice presents to an offering twice, her second nullifier collides with her first and is rejected on-chain (PR-7, TR-13). Charlie, a different investor presenting to that *same* offering, produces his own independent nullifier — it depends on his own holder secret — so his activity is entirely unaffected by Alice's.
 - **Presentations to different offerings stay unlinkable.** Alice investing in two unrelated offerings produces two nullifiers with no discoverable relationship to each other or to her identity (PR-6, PR-7) — this is the mechanism behind §5's Beat 2.
 
-**Accepted cost:** cumulative caps *across* offerings cannot be enforced without linkage. This limitation is stated explicitly in the output rather than papered over.
+Cumulative caps *across* offerings cannot be enforced without linkage. This limitation is stated explicitly in the output rather than papered over.
 
 ---
 
