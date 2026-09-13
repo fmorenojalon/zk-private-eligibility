@@ -8,15 +8,15 @@
 
 **What this is.** An end-to-end system in which a person proves on their own phone that they qualify as a sophisticated investor under EU rules — *without disclosing income, portfolio, employment, or identity* — and an investment platform verifies that claim on-chain, learning nothing beyond a yes/no.
 
-**The problem.** Investing through a regulated platform today means surrendering payslips, bank certificates, tax returns and identity documents to establish a single boolean: *may this person invest, and up to how much?* The platform then stores that dossier permanently — a compliance burden for them and a standing breach risk for the investor. The regulation only ever required the boolean.
+**Problem.** Investing through a regulated platform today means surrendering payslips, bank certificates, tax returns and identity documents to establish a single boolean: *may this person invest, and up to how much?* The platform then stores that dossier permanently — a compliance burden for them and a standing breach risk for the investor. The regulation only ever required the boolean.
 
-**Why now, and why greenfield.** RWA tokenization platforms are building new credential infrastructure from scratch. There is no legacy signature format to inherit, so ZK-friendly primitives can be selected at issuance. Every architectural layer is designed from zero: credential schema, predicate circuits, revocation, unlinkability, on-chain verification.
+**Why now & greenfield.** RWA tokenization platforms are building new credential infrastructure from scratch. There is no legacy signature format to inherit, so ZK-friendly primitives can be selected at issuance. Every architectural layer is designed from zero: credential schema, predicate circuits, revocation, unlinkability, on-chain verification.
 
-**Scope discipline.** The MVP is deliberately narrowed to **one proving library (circom), one device (iPhone 14 Pro), one machine (MacBook Pro 2024)**. Extension to a second library is a post-MVP option.
+**Scope.** The MVP is deliberately narrowed to one proving library (circom), one device (iPhone 14 Pro), one machine (MacBook Pro 2024). Extension to a second library is a post-MVP option.
 
-**The research question.** *Can a greenfield, unlinkable, revocable eligibility credential be proven entirely on a four-year-old consumer phone and verified on-chain — and what does it cost as predicate complexity scales?*
+**The goal.** *Can a greenfield, unlinkable, revocable eligibility credential be proven entirely on a four-year-old consumer phone and verified on-chain — and what does it cost as predicate complexity scales?*
 
-**Primary contribution.** A **systems and architecture** contribution: a complete privacy-preserving compliance flow that works, with honest measurement of what it costs on real hardware and honest documentation of which problems remain unsolved.
+**Systems and architecture:** a complete privacy-preserving compliance flow that works, with honest measurement of what it costs on real hardware and honest documentation of which problems remain unsolved.
 
 **Success in one sentence.** A person on an iPhone gains access to a tokenized investment offering by proving eligibility, uses the same credential again without the platform being able to link the two events, and is correctly refused after the issuer revokes them.
 
@@ -24,7 +24,7 @@
 
 ## 2. Regulatory Basis
 
-Regulatory realism is a **design goal, not a constraint**. Where a rule is impractical to model faithfully, it is simplified and the deviation documented.
+Regulatory realism is a design goal, not a constraint. Where a rule is impractical to model faithfully, it is simplified and the deviation documented.
 
 ### 2.1 Spain — *inversor acreditado* (Ley 5/2015, CNMV)
 
@@ -42,8 +42,8 @@ Qualifies on **at least two of three** criteria in the full regulation. This MVP
 
 | # | Criterion | Threshold |
 | --- | --- | --- |
-| (a) | Gross income **or** portfolio | ≥ €60,000/yr **or** portfolio > €100,000 |
-| (b) | Professional experience | ≥ 1 yr financial sector in a knowledge-requiring role **or** ≥ 12 mo executive at a qualifying entity |
+| (a) | Gross income or portfolio | ≥ €60,000/yr or portfolio > €100,000 |
+| (b) | Professional experience | ≥ 1 yr financial sector in a knowledge-requiring role or ≥ 12 mo executive at a qualifying entity |
 
 ### 2.3 Why this regulation suits ZK
 
@@ -57,7 +57,7 @@ The EU structure is a *threshold predicate over heterogeneous sub-conditions* �
 | --- | --- | --- | --- |
 | P1 | income ≥ threshold | range | EU (€60k) |
 | P2 | financial assets / portfolio > €100,000 | range | both |
-| P3 | ≥1 yr financial sector **or** ≥12 mo executive | range + set membership | EU (b) |
+| P3 | ≥1 yr financial sector or ≥12 mo executive | range + set membership | EU (b) |
 | P4 | at least 2 of {a, b} hold (2-of-2, generic M-of-N construct) | threshold-of-N | EU — the showcase |
 | P5 | jurisdiction ∈ allowed set | set membership | both |
 | P6 | subject ∉ sanctions set | set non-membership | both |
@@ -79,7 +79,7 @@ Each leaf in the valid-set tree is a Poseidon commitment over the holder's **com
 
 ## 4. Core Design Challenges
 
-### 4.1 Unlinkability ⊗ Revocation
+### 4.1 Revocation Without Breaking Unlinkability
 
 Naive revocation publishes revoked credential identifiers; proving you are absent from that list reveals your identifier and destroys unlinkability.
 
@@ -87,7 +87,7 @@ A Merkle allowlist of valid credentials with epoch rotation. The holder proves m
 
 Revocation takes effect only at an epoch boundary, creating a bounded exposure window. Holders must refresh their Merkle path on each root change.
 
-### 4.2 Cap Enforcement ⊗ Unlinkability
+### 4.2 Cap Enforcement vs. Unlinkability
 
 Enforcing a cumulative cap requires per-investor state; unlinkability forbids correlating presentations. These requirements are in direct conflict.
 
