@@ -68,7 +68,7 @@ Four standalone circuits, no credential logic — pure primitive measurement:
 | Circuit | Parameters tested | Purpose |
 | --- | --- | --- |
 | `poseidon-baseline` | arity 2, arity 10 | matched the two Poseidon arities used in the credential commitment at the time ([credential-protocol.md §4.2](../credential-protocol.md#42-commitment-structure)); `attr_hash`'s arity later dropped to 9 when P9 was retired, so arity 10 is now the closest reference point rather than an exact match — see that section for detail |
-| `merkle-baseline` | depth ∈ {16, 20, 32} | matches TR-6's complexity dial; reused directly for P5/P6/P8 in Phase 2 |
+| `merkle-baseline` | depth ∈ {16, 20, 32} | matches TR-6's complexity parameters; reused directly for P5/P6/P8 in Phase 2 |
 | `range-baseline` | single comparator over a 64-bit value | matches the income/portfolio field sizes used in P1/P2 |
 | `eddsa-baseline` | single EdDSA-Poseidon signature verification | standalone reference number per F1.4 — **not** used in the Phase 2 credential circuit per [credential-protocol.md §3](../credential-protocol.md#3-issuer-attestation-membership-only-design-decision), but still required baseline data |
 
@@ -86,7 +86,7 @@ All values go through the measurement harness ([measurement-harness.md](measurem
 
 ---
 
-## 6. iOS Native Proving Plumbing (F1.1)
+## 6. iOS Native Proving Integration Layer (F1.1)
 
 **Requirement:** "A circom circuit SHALL prove on the iPhone 14 Pro natively."
 
@@ -103,7 +103,7 @@ All values go through the measurement harness ([measurement-harness.md](measurem
 
 **Hard constraint (TR-7):** proofs generated in the iOS Simulator do not count as valid measurements or satisfy F1.1 — must run on the physical iPhone 14 Pro.
 
-**Status: satisfied.** `holder-app-ios/mopro-baseline` wraps the `poseidon-baseline` circuit via mopro, builds and signs against a free personal-team Apple Developer account, and its `MoproAppUITests.testCircomProveVerify` test — which launches the app on the paired iPhone 14 Pro, taps "Prove", and asserts the proof completes — passed running natively on-device (`xcodebuild test -destination "id=<device UDID>"`, physical device confirmed via `devicectl`/`xctrace`, not the Simulator). Toolchain and device setup steps, including several non-obvious build/signing issues encountered getting here, are recorded in [TOOLCHAIN.md §9](../../TOOLCHAIN.md#9-building-an-f11-style-mopro-app-for-a-physical-device-gotchas) for reproducibility (TR-19). Rationale for why this stack (mopro/native bindings) is needed at all is in [ARCHITECTURE.md](../ARCHITECTURE.md), "Native mobile proving" section.
+**Status: satisfied.** `holder-app-ios/mopro-baseline` wraps the `poseidon-baseline` circuit via mopro, builds and signs against a free personal-team Apple Developer account, and its `MoproAppUITests.testCircomProveVerify` test — which launches the app on the paired iPhone 14 Pro, taps "Prove", and asserts the proof completes — passed running natively on-device (`xcodebuild test -destination "id=<device UDID>"`, physical device confirmed via `devicectl`/`xctrace`, not the Simulator). Toolchain and device setup steps, including several non-obvious build/signing issues encountered getting here, are recorded in [TOOLCHAIN.md §9](../../TOOLCHAIN.md#9-building-an-f11-style-mopro-app-for-a-physical-device-caveats) for reproducibility (TR-19). Rationale for why this stack (mopro/native bindings) is needed at all is in [ARCHITECTURE.md](../ARCHITECTURE.md), "Native mobile proving" section.
 
 **No network during proving (TR-8):** the harness app must not require network access while the proof is being generated; the device may go on Wi-Fi only afterward to sync measurement records ([measurement-harness.md §4](measurement-harness.md#4-emission--export-path)).
 

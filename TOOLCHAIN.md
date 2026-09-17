@@ -90,7 +90,7 @@ Short version: an iOS app is one compiled, sandboxed binary with no Node.js or s
   xcrun devicectl list devices   # should show the iPhone as "connected"
   ```
 
-## 9. Building an F1.1-style mopro app for a physical device (gotchas)
+## 9. Building an F1.1-style mopro app for a physical device (caveats)
 
 Getting `holder-app-ios/mopro-baseline` running natively on the iPhone surfaced several non-obvious issues, recorded here so a clean checkout doesn't have to rediscover them:
 

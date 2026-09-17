@@ -127,7 +127,7 @@ cast call $VERIFIER \
 # -> false
 ```
 
-That's the whole verification story: a proof generated on the iPhone, converted to Solidity calldata, checked by a contract whose logic came directly from the circuit's proving key, running on a real (if ephemeral) EVM.
+That's the whole verification flow: a proof generated on the iPhone, converted to Solidity calldata, checked by a contract whose logic came directly from the circuit's proving key, running on a real (if ephemeral) EVM.
 
 **Note:** Groth16 proofs are randomized (blinding factors baked into each proof for zero-knowledge), so *regenerating* a proof for the same input would produce different `pA`/`pB`/`pC` values than the ones above, even though the public output stays the same. The values here are specifically the ones in the committed `circuits/poseidon-baseline/proof.json` fixture — they'll keep working as long as that file isn't regenerated.
 

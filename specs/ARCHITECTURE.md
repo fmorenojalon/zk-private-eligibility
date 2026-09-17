@@ -9,7 +9,7 @@ This document explains *why* the project's technology choices are what they are,
 | What must the system do? | [`PRD.md`](PRD.md) |
 | What's the credential schema, predicates, nullifier, threat model? | [`credential-protocol.md`](credential-protocol.md) |
 | Why this technology, at each layer? | This document |
-| Exact versions, install commands, build gotchas | [`../TOOLCHAIN.md`](../TOOLCHAIN.md) |
+| Exact versions, install commands, build caveats | [`../TOOLCHAIN.md`](../TOOLCHAIN.md) |
 | Phase 1 requirements and acceptance status | [`phase-1/toolchain-baseline.md`](phase-1/toolchain-baseline.md), [`phase-1/measurement-harness.md`](phase-1/measurement-harness.md) |
 
 ## System topology
@@ -45,7 +45,7 @@ Trust boundaries (what crosses which boundary, and what never does) are defined 
 
 ## Native mobile proving: mopro (Rust + UniFFI)
 
-Desktop and iOS need fundamentally different proving stacks, not just different install commands. An iOS app is one compiled, sandboxed binary with no Node.js or general script-execution environment inside it, so proving on-device needs a fully compiled native path (mopro's `rust-witness` transpiles the circuit's WASM to native code at build time; `arkworks` does the actual Groth16 math), bridged to Swift via UniFFI-generated bindings. Mopro is the orchestration layer that makes this a solved problem instead of hand-rolled cross-compilation and FFI plumbing — PRD R3 names this explicitly: "no novel cryptography is required," meaning existing libraries throughout, mopro included. (Desktop toolchain steps are [`../TOOLCHAIN.md` §1–§6](../TOOLCHAIN.md); iOS setup steps are [§8](../TOOLCHAIN.md#8-ios-toolchain).)
+Desktop and iOS need fundamentally different proving stacks, not just different install commands. An iOS app is one compiled, sandboxed binary with no Node.js or general script-execution environment inside it, so proving on-device needs a fully compiled native path (mopro's `rust-witness` transpiles the circuit's WASM to native code at build time; `arkworks` does the actual Groth16 math), bridged to Swift via UniFFI-generated bindings. Mopro is the orchestration layer that makes this a solved problem instead of hand-rolled cross-compilation and FFI integration work — PRD R3 names this explicitly: "no novel cryptography is required," meaning existing libraries throughout, mopro included. (Desktop toolchain steps are [`../TOOLCHAIN.md` §1–§6](../TOOLCHAIN.md); iOS setup steps are [§8](../TOOLCHAIN.md#8-ios-toolchain).)
 
 ---
 

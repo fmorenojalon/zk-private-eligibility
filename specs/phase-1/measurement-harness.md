@@ -78,7 +78,7 @@ This durability requirement exists specifically so that a multi-hour measurement
 
 ## 4. Emission & Export Path
 
-- **On-device:** the Phase 1 iOS proving harness ([toolchain-baseline.md §6](toolchain-baseline.md#6-ios-native-proving-plumbing-f11)) writes each record to local NDJSON storage per §3, then attempts sync.
+- **On-device:** the Phase 1 iOS proving harness ([toolchain-baseline.md §6](toolchain-baseline.md#6-ios-native-proving-integration-layer-f11)) writes each record to local NDJSON storage per §3, then attempts sync.
 - **Collector service:** a new lightweight HTTP service, `measurement/collector`, on the Mac at port `3003` (added to PRD §9.1). Exposes a single ingest endpoint that accepts a batch of NDJSON records, deduplicates by `record_id`, and appends new ones to `measurement/records/`.
 - **Sync timing:** only after proof generation completes — never during proving (TR-8). The device may re-enable network specifically to sync, then proceed with the next run.
 - **Idempotency:** because sync can retry, the collector must treat re-delivery of an already-seen `record_id` as a no-op, not a duplicate entry.
@@ -87,7 +87,7 @@ This durability requirement exists specifically so that a multi-hour measurement
 
 ## 5. Analysis Scripts
 
-`measurement/analyze` — Python, stdlib only (`json`, `statistics`) rather than pandas as originally drafted here: at this data volume (dozens to low hundreds of records per phase, not the large-N territory pandas is built for) a hard dependency bought nothing but install friction against TR-19's clean-checkout bar. Revisit if Phase 5's full complexity-dial sweep turns out to need real dataframe operations or plotting.
+`measurement/analyze` — Python, stdlib only (`json`, `statistics`) rather than pandas as originally drafted here: at this data volume (dozens to low hundreds of records per phase, not the large-N territory pandas is built for) a hard dependency bought nothing but install friction against TR-19's clean-checkout bar. Revisit if Phase 5's full complexity-parameter sweep turns out to need real dataframe operations or plotting.
 
 Ingests all records in `measurement/records/`, groups by `(circuit.name, circuit.parameters)`, and computes mean/median/p95/stddev per metric, plus device/backend version breakdowns. Output: Markdown and CSV summary tables under `measurement/reports/`.
 
