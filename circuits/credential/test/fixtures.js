@@ -101,7 +101,8 @@ async function buildFixtures() {
     }
 
     const CURRENT_EPOCH = 5n;
-    const SCOPE = hash2(111n, 0n); // stand-in Poseidon(offering_id) - credential-protocol.md §7
+    const SCOPE = 0n; // scope = offeringId directly, no hashing - verification-infrastructure.md §1. 0 = "Offering A"
+    const SCOPE_OFFERING_B = 1n; // a second, legitimately different offering - "Offering B"
 
     const ALICE = {
         holder_secret: 123456789n,
@@ -229,6 +230,7 @@ async function buildFixtures() {
         DEPTH,
         CURRENT_EPOCH,
         SCOPE,
+        SCOPE_OFFERING_B,
         VALID_SET_ROOT,
         JURISDICTION_ROOT,
         ALLOWED_JURISDICTIONS,
