@@ -6,19 +6,9 @@
 
 ## 1. Executive Summary
 
-**What this is.** An end-to-end system in which a person proves on their own phone that they qualify as a sophisticated investor under EU rules — *without disclosing income, portfolio, employment, or identity* — and an investment platform verifies that claim on-chain, learning nothing beyond a yes/no.
+Investing through a regulated platform today means surrendering payslips, bank certificates, tax returns, and identity documents to establish one boolean (*may this person invest, and up to how much?*), after which the platform stores that dossier permanently, a compliance burden and a standing breach risk for data the regulation never actually needed. This project builds the alternative around three parties: a **holder** (the investor), an **issuer** (their bank, which attests their financial standing), and a **verifier** (the asset management platform offering the investment). The holder generates a zero-knowledge proof (a ZK-SNARK) on their own phone that they qualify as a sophisticated EU investor, without disclosing income, portfolio, employment, or identity, and the verifier checks that proof on-chain, learning nothing beyond yes/no - granting access, letting the holder reuse the same credential unlinkably, and correctly refusing access once the issuer revokes it.
 
-**Problem.** Investing through a regulated platform today means surrendering payslips, bank certificates, tax returns and identity documents to establish a single boolean: *may this person invest, and up to how much?* The platform then stores that dossier permanently — a compliance burden for them and a standing breach risk for the investor. The regulation only ever required the boolean.
-
-**Why now & greenfield.** RWA tokenization platforms are building new credential infrastructure from scratch. There is no legacy signature format to inherit, so ZK-friendly primitives can be selected at issuance. Every architectural layer is designed from zero: credential schema, predicate circuits, revocation, unlinkability, on-chain verification.
-
-**Scope.** The MVP is deliberately narrowed to one proving library (circom), one device (iPhone 14 Pro), one machine (MacBook Pro 2024). Extension to a second library is a post-MVP option.
-
-**The goal.** *Can a greenfield, unlinkable, revocable eligibility credential be proven entirely on a four-year-old consumer phone and verified on-chain — and what does it cost as predicate complexity scales?*
-
-**Systems and architecture:** a complete privacy-preserving compliance flow that works, with honest measurement of what it costs on real hardware and honest documentation of which problems remain unsolved.
-
-**Success in one sentence.** A person on an iPhone gains access to a tokenized investment offering by proving eligibility, uses the same credential again without the platform being able to link the two events, and is correctly refused after the issuer revokes them.
+This is a greenfield project: RWA tokenization platforms are building this infrastructure from zero anyway, with no legacy signature format to inherit, so every layer (schema, circuits, revocation, unlinkability, verification) is designed fresh. The MVP narrows this to one proving system (Groth16, circuits written in circom) and a recent consumer phone, answering one question: can such a credential be proven entirely on ordinary consumer hardware and verified on-chain, and at what cost as predicate complexity scales - delivered with measurement on real hardware and documentation of what's still unsolved.
 
 ---
 
