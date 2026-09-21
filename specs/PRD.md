@@ -381,13 +381,13 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 
 **Requirements**
 
-- F3.1 Registry contracts SHALL maintain all roots and consumed nullifiers per TR-12.
-- F3.2 Nullifier replay within a scope SHALL be rejected on-chain (TR-13).
+- F3.1 Registry contracts SHALL maintain all roots and consumed nullifiers per TR-12. — done
+- F3.2 Nullifier replay within a scope SHALL be rejected on-chain (TR-13). — done
 - F3.3 The issuer service SHALL expose issuance and revocation over local HTTP, and SHALL publish roots to the chain; both leaf insertion and root publication SHALL be restricted to the issuer's on-chain address (access control — TR-3 retired, L10).
 - F3.4 The issuer SHALL maintain the valid-set tree with epoch rotation per §4.1.
 - F3.5 Revocation SHALL cause proof failure from the following epoch (PR-10) without holder cooperation (PR-9).
-- F3.6 Per-offering eligibility policy SHALL be configurable on-chain (PR-20), constrained to a `jurisdictionRoot` the issuer has actually approved (not one the platform invents — `specs/phase-3/verification-infrastructure.md §1`/§3.1), and each offering's access grant SHALL verify a submitted proof's `jurisdictionRoot` and `scope` public inputs match that offering's own registered values — cryptographic proof validity alone does not confirm a proof was generated for *this* offering (`credential-protocol.md §5.4`).
-- F3.7 Gas SHALL be measured across predicate configurations (TR-14).
+- F3.6 Per-offering eligibility policy SHALL be configurable on-chain (PR-20), constrained to a `jurisdictionRoot` the issuer has actually approved (not one the platform invents — `specs/phase-3/verification-infrastructure.md §1`/§3.1), and each offering's access grant SHALL verify a submitted proof's `jurisdictionRoot` and `scope` public inputs match that offering's own registered values — cryptographic proof validity alone does not confirm a proof was generated for *this* offering (`credential-protocol.md §5.4`). — done
+- F3.7 Gas SHALL be measured across predicate configurations (TR-14). — done
 
 **Deliverable D2 — Verification Infrastructure:** deployed contracts, working issuer service, functioning epoch rotation and revocation, gas measurements.
 

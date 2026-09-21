@@ -58,7 +58,13 @@ contract OfferingPolicy {
         require(o.exists, "unknown offering");
 
         // Recorded-value cross-checks (credential-protocol.md §5.4) - before the expensive
-        // cryptographic verification, so a mismatched offering fails cheaply.
+        // cryptographic verification, so a mismatched offering fails cheaply. Necessary
+        // because verifyProof only proves this proof is internally consistent with these
+        // exact public inputs - it has no notion of "current". A proof stays
+        // cryptographically valid forever, even after the epoch/sanctionsRoot/etc. it
+        // names have gone stale. These five checks are what confirm the public inputs
+        // this proof was built against are still the live truth today, not merely
+        // self-consistent with each other.
         require(publicSignals[1] == uint256(o.jurisdictionRoot), "wrong jurisdictionRoot for this offering");
         require(publicSignals[2] == uint256(registry.sanctionsRoot()), "stale or wrong sanctionsRoot");
         require(publicSignals[4] == registry.currentEpoch(), "stale epoch");

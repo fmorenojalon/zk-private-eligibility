@@ -207,6 +207,8 @@ What a real presentation against a live offering looks like, start to finish —
 
 `consumeIfUnused` runs *last*, deliberately: an invalid or malformed proof never spends a nullifier. Only a proof that survives every recorded-value check and the real cryptographic verification actually consumes one.
 
+**Why step 6 exists at all, given step 7 already does real cryptographic verification.** `verifyProof` only proves this proof is internally consistent with the exact public inputs submitted alongside it — it has no notion of "current." A proof stays cryptographically valid forever, even long after the epoch, `sanctionsRoot`, or offering it names has gone stale — Groth16 verification is a timeless mathematical check, not something that expires. Step 6 is what confirms these specific public inputs are still the live, correct ones for this offering *today*, not merely self-consistent with each other. Skip it, and a revoked holder's original proof — still perfectly valid by `verifyProof`'s own logic — would keep working forever.
+
 ## Phase 3: deploy and verify the eligibility contracts on Anvil
 
 The same "deploy to a real chain, drive it with `cast`" exercise as above, for the full Phase 3 stack (`EligibilityRegistry`, `NullifierRegistry`, `Groth16VerifierFull`, `OfferingPolicy`) rather than just the bare verifier. `forge test` (28 cases across `EligibilityRegistry.t.sol`/`NullifierRegistry.t.sol`/`OfferingPolicy.t.sol`/`Integration.t.sol`) already covers this against Foundry's in-memory EVM — this section is the same flow confirmed against a real, if ephemeral, Anvil process instead, using two of Anvil's well-known default test accounts as "issuer" and "platform" (public, documented, ephemeral-chain-only — never reuse them anywhere real):
