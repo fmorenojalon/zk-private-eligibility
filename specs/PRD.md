@@ -6,7 +6,9 @@
 
 ## 1. Executive Summary
 
-Investing through a regulated platform today means surrendering payslips, bank certificates, tax returns, and identity documents to establish one boolean (*may this person invest, and up to how much?*), after which the platform stores that dossier permanently, a compliance burden and a standing breach risk for data the regulation never actually needed. This project builds the alternative around three parties: a **holder** (the investor), an **issuer** (their bank, which attests their financial standing), and a **verifier** (the asset management platform offering the investment). The holder generates a zero-knowledge proof (a ZK-SNARK) on their own phone that they qualify as a sophisticated EU investor, without disclosing income, portfolio, employment, or identity, and the verifier checks that proof on-chain, learning nothing beyond yes/no - granting access, letting the holder reuse the same credential unlinkably, and correctly refusing access once the issuer revokes it.
+Investing through a regulated platform today means surrendering payslips, bank certificates, tax returns, and identity documents to establish one boolean (*may this person invest, and up to how much?*), after which the platform stores that dossier permanently, a compliance burden and a standing breach risk for data the regulation never actually needed.
+
+This project builds the alternative around three parties: a **holder** (the investor), an **issuer** (their bank, which attests their financial standing), and a **verifier** (the asset management platform offering the investment). The holder generates a zero-knowledge proof (a ZK-SNARK) on their own phone that they qualify as a sophisticated EU investor, without disclosing income, portfolio, employment, or identity, and the verifier checks that proof on-chain, learning nothing beyond yes/no - granting access, letting the holder reuse the same credential unlinkably, and correctly refusing access once the issuer revokes it.
 
 This is a greenfield project: RWA tokenization platforms are building this infrastructure from zero anyway, with no legacy signature format to inherit, so every layer (schema, circuits, revocation, unlinkability, verification) is designed fresh. The MVP narrows this to one proving system (Groth16, circuits written in circom) and a recent consumer phone, answering one question: can such a credential be proven entirely on ordinary consumer hardware and verified on-chain, and at what cost as predicate complexity scales - delivered with measurement on real hardware and documentation of what's still unsolved.
 
@@ -131,9 +133,9 @@ Five flows define the system's behaviour.
 ### Flow 2 — Eligibility Presentation (core flow)
 
 1. Holder browses an offering on the platform.
-2. Platform issues a presentation request specifying scope (this offering, uniquely — §4.2) and epoch.
+2. Platform issues a presentation request specifying scope (this offering, uniquely — §4.2), epoch, and the offering's registered `jurisdictionRoot`.
 3. Holder app displays *what will be proven and what will be revealed*, and requests consent.
-4. Holder app generates the proof **entirely on-device**.
+4. Holder app fetches its Merkle path for this offering's `jurisdictionRoot` if it doesn't already have one cached (`GET /jurisdictions/:root/path/:jurisdictionCode`, `specs/phase-3/verification-infrastructure.md §4.1`) — a holder whose jurisdiction isn't in this offering's approved set gets no path back and can't produce a satisfying witness — then generates the proof **entirely on-device**.
 5. Holder app returns proof and public inputs to the platform.
 6. Platform submits the proof for on-chain verification.
 7. Chain verifies the proof cryptographically, cross-checks its public inputs (`validSetRoot`, `jurisdictionRoot`, `scope`) against this offering's own recorded values — proof validity alone doesn't confirm the proof was generated *for this offering* (`credential-protocol.md §5.4`) — checks the nullifier is unused, records it, and returns a result.

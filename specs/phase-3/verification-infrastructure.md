@@ -243,6 +243,7 @@ issuer-service/
 | `POST /sanctions/add` | `{ identityCommitment }` | `{ root }` | Real dynamic insertion into the indexed sanctions tree: locate the low leaf, update its `nextValue`/`nextIndex`, insert the new leaf, recompute and publish `sanctionsRoot`. |
 | `POST /jurisdictions/add` | `{ jurisdictionCode }` | `{ root }` | Grows the issuer's one canonical tree of every jurisdiction code it recognizes (a plain Merkle tree, not indexed — `credential-protocol.md §5`'s P5 uses ordinary inclusion, not non-membership). This tree is never presented against directly; it's the source set §4.1's next row draws from. |
 | `POST /jurisdictions/approve-subset` | `{ jurisdictionCodes }` | `{ root }` | Builds a *separate*, offering-scoped tree from exactly the requested codes, checking each one is actually present in the canonical tree above; calls `EligibilityRegistry.approveJurisdictionRoot(root)` (§3.1) so `OfferingPolicy.registerOffering` (§3.3) can later accept it. This is what makes a platform's per-offering jurisdiction allowlist a set the issuer vouched for, not one the platform invented. |
+| `GET /jurisdictions/:root/path/:jurisdictionCode` | — | `{ pathElements, pathIndices }` or `404` | Returns this jurisdiction code's Merkle path *within the specific approved subset tree at `:root`* — what a holder's device needs to satisfy P5 when presenting to an offering that uses this particular root (not necessarily the canonical tree). `404` if the code isn't actually a member of that subset — the holder doesn't qualify for offerings using it, which is correct behavior, not an error condition. Reconstructs the tree on demand from `jurisdiction_subset_trees` (§4.2); a root alone can't answer this, since a Merkle root reveals nothing about its own contents. |
 
 All local HTTP, no auth beyond what TR-20's "runs entirely locally" already implies — matching the measurement collector's own precedent of a minimal, dependency-free local service (`ARCHITECTURE.md`).
 
@@ -284,11 +285,22 @@ CREATE TABLE indexed_tree_nodes (
     next_index  INTEGER NOT NULL,
     PRIMARY KEY (tree, leaf_index)
 );
+
+CREATE TABLE jurisdiction_subset_trees (
+    root              TEXT NOT NULL,   -- the approved subset root this row belongs to
+    jurisdiction_code TEXT NOT NULL,
+    tree_index        INTEGER NOT NULL,
+    PRIMARY KEY (root, tree_index)
+);
 ```
 
 **Column types split by what each value actually is, not applied uniformly.** `income`, `portfolio_value`, `financial_sector_months`, `executive_months`, `jurisdiction_code`, `identity_commitment`, `attr_hash`, `leaf`, `value`, `next_value` are BN254 field elements or Poseidon hash outputs — up to ~254 bits, which overflows SQLite's native `INTEGER` (a signed 64-bit type) outright, and would also silently lose precision if read back into a JS `Number` (safe only up to 2^53). `TEXT`, holding a decimal string round-tripped through JS `BigInt`, is the correct representation for these, and matches how every `snarkjs` output file in this project already represents field elements. `tree_index`, `leaf_index`, `next_index`, `issued_epoch`, `expiry_epoch` are different in kind — small counters and tree positions (a depth-20 tree tops out around 2^20), nowhere near either limit. Using `TEXT` for these too wouldn't just be imprecise: `GET /credentials/:holderId/path`'s `ORDER BY tree_index DESC` (below) sorts `TEXT` lexicographically, not numerically, so it would return the wrong "most recent" row as soon as more than nine leaves existed (`'9' > '11'` as strings). `INTEGER` for these five columns avoids that outright rather than relying on query-time care.
 
 **The same risk exists one level up, in `indexedTree.ts`'s splice logic, and needs enforcing in code rather than left implicit.** `credential-protocol.md §5.3` requires locating the leaf whose `value < identity_commitment < nextValue`; that logic reads `value`/`next_value` back from the `TEXT` columns above. Those columns are correctly `TEXT` — but `indexedTree.ts` and `merkleTree.ts` must parse every such value to `BigInt` immediately on read from SQLite and perform every relational comparison (locating the low leaf, maintaining ascending order per §5.3) on the `BigInt` values, never on the raw `TEXT` strings. Comparing the strings directly would reproduce the exact same lexicographic-ordering bug just fixed above, except here it corrupts P6's non-membership guarantee itself — a sanctioned entry could end up bracketed incorrectly, letting a non-membership proof through for someone who shouldn't pass — rather than just returning a stale path on one query. `circuits/credential/test/fixtures.js`'s existing sanctions-list construction (§4.3 below) already gets this right, sorting real `BigInt` values throughout; this note exists because the SQLite round-trip is new in Phase 3 and has no equivalent precedent to inherit from within this codebase.
+
+**`jurisdiction_subset_trees` is what makes `GET /jurisdictions/:root/path/:jurisdictionCode` (§4.1) possible.** `/jurisdictions/approve-subset` builds a tree and hands back its root, but a root alone can't answer a path query later — it's a hash, and reveals nothing about what went into it. Without recording which codes went into which root, at which index, the issuer service would have no way to reconstruct any subset tree after the fact. Rebuilding the exact same `SparseMerkleTree` (same depth, same `hash2`, same `(code, index)` pairs) from these rows reproduces the identical root deterministically, so a path request is just: look up this root's rows, rebuild the tree in memory, call `proof(index)`.
+
+One consequence worth being explicit about, not a blocker: this table grows with the number of *distinct code combinations* ever approved, not with the number of codes themselves — unlike the canonical tree above (one row per code, ever), a new offering requesting a jurisdiction mix nobody's requested before adds a whole new set of rows, retained for as long as any offering might still reference that root. No eviction policy is defined, and nothing here bounds how many distinct combinations could accumulate — in practice this is likely to stay small, since platforms tend to reuse a handful of common allowlists (e.g. "EU only" vs. "all recognized"), but that's an operational expectation, not something enforced.
 
 **`issued_attr_hashes` is what makes test case 22 (§7.5) implementable.** `/credentials/submit` looks up `issued_attr_hashes.attr_hash` for the claimed `holder_id` and compares it against the `attrHash` implied by the submitted leaf-binding proof's public input — if they don't match, the submission is rejected before the proof is even verified, since it's already claiming to be bound to attributes this holder was never issued. Without this table, the service would have no record of what it told each holder, and couldn't distinguish a proof correctly bound to their real `attr_hash` from one bound to an arbitrary fabricated value.
 
@@ -403,6 +415,10 @@ Deploys the entire stack (all four contracts) fresh, matching the real deploymen
 | 25 | `POST /sanctions/add` for a new `identityCommitment`, then a non-membership check for a value now bracketed by the new entry | correctly fails non-membership (the new entry is real, the tree wasn't just re-fixtured) — this is the dynamic-insertion decision (§1) verified concretely, not just implemented |
 | 26 | `POST /sanctions/add` twice, then a non-membership check for a value between the two newly-added entries | correctly fails — confirms the splice procedure maintains adjacency correctly after *multiple* insertions, not just one |
 | 27 | Restart the service process, then `GET /credentials/:id/path` for a holder issued before the restart | still returns a correct, current path — SQLite persistence actually persists, not just an in-memory convenience |
+| 28 | `POST /jurisdictions/add` for a new code, then `POST /jurisdictions/approve-subset` requesting exactly that code | succeeds, calls `EligibilityRegistry.approveJurisdictionRoot` with the resulting subset root |
+| 29 | `POST /jurisdictions/approve-subset` requesting a code never added to the canonical tree | rejected — confirms the "each requested code is actually present in the canonical tree" check (§4.1) is real, not just described |
+| 30 | `GET /jurisdictions/:root/path/:jurisdictionCode` for a code genuinely in that approved subset | returns a path that validates against `:root` |
+| 31 | `GET /jurisdictions/:root/path/:jurisdictionCode` for a code *not* in that subset (but present in the canonical tree, or in a different subset) | `404` — confirms a holder outside this offering's approved set gets no path, not a stale or wrong one |
 
 ### 7.6 What's deliberately not tested here
 
@@ -424,7 +440,7 @@ Gas measurement (§6) is a measurement pass, not a pass/fail test — it has no 
 | F3.1 | §3.1–3.2 — `EligibilityRegistry` and `NullifierRegistry`, tested in §7.1–7.2 |
 | F3.2 | §3.2 `NullifierRegistry.consumeIfUnused`, tested in §7.2 case 7 and §7.3 case 11 |
 | F3.3 | §4 — issuer service HTTP surface, access control per L10 (both leaf insertion and root publication gated to the issuer's address, §3.1/§4.1) |
-| F3.4 | §4.1 (`/revoke`, `/sanctions/add`, `/jurisdictions/add`, `/jurisdictions/approve-subset`), §5 — epoch rotation and tree maintenance, tested in §7.5 cases 24–26 |
+| F3.4 | §4.1 (`/revoke`, `/sanctions/add`, `/jurisdictions/add`, `/jurisdictions/approve-subset`, `/jurisdictions/:root/path/:jurisdictionCode`), §5 — epoch rotation and tree maintenance, tested in §7.5 cases 24–26, 28–31 |
 | F3.5 | §5 — revocation causes failure from the following epoch without holder cooperation, tested end-to-end in §7.4 case 18 |
 | F3.6 | §3.3 `OfferingPolicy.presentEligibility`'s recorded-value cross-checks, tested in §7.3 cases 12–15; `jurisdictionRoot`'s issuer-approval gate at registration (§3.1/§3.3) tested in §7.1 cases 5b–5c and §7.3 case 9b |
 | F3.7 | §6 — gas measurement across all three circuit configurations, recorded in `contracts/PHASE3_RESULTS.md` |
