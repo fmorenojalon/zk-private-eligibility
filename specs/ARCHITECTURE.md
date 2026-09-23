@@ -14,7 +14,7 @@ This document explains *why* the project's technology choices are what they are,
 
 ## System topology
 
-Per PRD §9.1 — everything runs on the MacBook Pro 2024 except the holder app, which runs on the iPhone 14 Pro, communicating over the local network. Nothing is hosted externally (TR-20).
+Per PRD §9.1 — everything runs on the MacBook Air M3 except the holder app, which runs on the iPhone 14 Pro, communicating over the local network. Nothing is hosted externally (TR-20).
 
 | Service | Role | Stack |
 | --- | --- | --- |

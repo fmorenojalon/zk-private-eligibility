@@ -2,7 +2,7 @@
 
 Satisfies F1.4: "Baseline costs SHALL be established for Poseidon, Merkle inclusion at three depths, range comparison, and EdDSA verification."
 
-**Methodology.** Desktop measurements (MacBook Pro 2024, macOS 15.6.1) using the pinned toolchain (circom 2.2.3, snarkjs 0.7.6, circomlib @ `35e54ea2`) — see [TOOLCHAIN.md](../TOOLCHAIN.md). Each circuit: `circom --r1cs --wasm` for constraint counts, Hermez Powers-of-Tau + `snarkjs groth16 setup` + one dev contribution for the proving/verification keys, then a single witness-generation → proving → verification pass timed with wall-clock `date +%s%N` deltas around each `snarkjs`/`node` invocation. These are **desktop, single-run** numbers. `poseidon-baseline` (arity 2) additionally has real **structured, device-tagged, repeated on-device records** via F1.3's measurement harness (§"On-device" below) — the other three circuits haven't been wired through mopro on-device yet.
+**Methodology.** Desktop measurements (MacBook Air M3, macOS 15.6.1) using the pinned toolchain (circom 2.2.3, snarkjs 0.7.6, circomlib @ `35e54ea2`) — see [TOOLCHAIN.md](../TOOLCHAIN.md). Each circuit: `circom --r1cs --wasm` for constraint counts, Hermez Powers-of-Tau + `snarkjs groth16 setup` + one dev contribution for the proving/verification keys, then a single witness-generation → proving → verification pass timed with wall-clock `date +%s%N` deltas around each `snarkjs`/`node` invocation. These are **desktop, single-run** numbers. `poseidon-baseline` (arity 2) additionally has real **structured, device-tagged, repeated on-device records** via F1.3's measurement harness (§"On-device" below) — the other three circuits haven't been wired through mopro on-device yet.
 
 ## Results
 

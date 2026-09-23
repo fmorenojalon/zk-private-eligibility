@@ -114,7 +114,7 @@ What the entire system exists to demonstrate, told in three scenarios:
 
 ## 6. User Flows
 
-Five flows define the system's behaviour.
+Six flows define the system's behaviour.
 
 ### Flow 1 — Credential Issuance
 
@@ -135,7 +135,7 @@ Five flows define the system's behaviour.
 1. Holder browses an offering on the platform.
 2. Platform issues a presentation request specifying scope (this offering, uniquely — §4.2), epoch, and the offering's registered `jurisdictionRoot`.
 3. Holder app displays *what will be proven and what will be revealed*, and requests consent.
-4. Holder app fetches its Merkle path for this offering's `jurisdictionRoot` if it doesn't already have one cached (`GET /jurisdictions/:root/path/:jurisdictionCode`, `specs/phase-3/verification-infrastructure.md §4.1`) — a holder whose jurisdiction isn't in this offering's approved set gets no path back and can't produce a satisfying witness — then generates the proof **entirely on-device**.
+4. Holder app fetches, fresh right before proving (never reusing a value cached from an earlier presentation, since both rotate independently of this offering and often): its Merkle path against the *current* valid-set root and epoch (`GET /credentials/:holderId/path`, which returns path, epoch, and root together — `specs/phase-3/verification-infrastructure.md §4.1`), and its non-membership witness against the *current* `sanctionsRoot` (`GET /sanctions/path/:identityCommitment`, same spec). It also fetches its path for this offering's `jurisdictionRoot` if it doesn't already have one cached for that specific root (`GET /jurisdictions/:root/path/:jurisdictionCode`) — a holder whose jurisdiction isn't in this offering's approved set gets no path back and can't produce a satisfying witness. Holder app then generates the proof **entirely on-device**.
 5. Holder app returns proof and public inputs to the platform.
 6. Platform submits the proof for on-chain verification.
 7. Chain verifies the proof cryptographically, cross-checks its public inputs (`validSetRoot`, `jurisdictionRoot`, `scope`) against this offering's own recorded values — proof validity alone doesn't confirm the proof was generated *for this offering* (`credential-protocol.md §5.4`) — checks the nullifier is unused, records it, and returns a result.
@@ -159,6 +159,16 @@ Identical to Flow 2 against a different offering. The resulting nullifier differ
 ### Flow 5 — Refusal (ineligible)
 
 Identical to Flow 2 through step 3. Bob, whose income and portfolio both fall short of the EU regime's thresholds, attempts to present eligibility for the same real-estate offering Alice invested in. At step 4, his device cannot produce a satisfying witness — no combination of private values makes the circuit's constraints hold, so no proof exists to generate, and the flow never proceeds further. Nothing is ever submitted for the platform to reject; Bob's app simply reports that he doesn't currently qualify, and *the platform learns nothing beyond an incomplete session* — not which condition failed, not even that ineligibility was specifically determined.
+
+### Flow 6 — Attribute Update & Re-issuance
+
+Answers "a holder's attribute value changes at the issuer — what happens?" No new mechanism is introduced here; this flow composes Flow 1 and Flow 4, and its point is that the three steps below are independent and none of them implies another.
+
+1. Issuer updates one or more of a holder's attribute values in its own records (e.g. income or employment changes). This step alone has no on-chain effect — the holder's existing credential is untouched and remains exactly as provable as before, because nothing has yet touched the valid-set tree.
+2. If the change affects the holder's current eligibility, the issuer separately decides whether to revoke the existing credential now, via Flow 4. This is the issuer's own judgement call about the edit just made, not something the system infers or triggers automatically — revoking still needs no holder cooperation (PR-9) and still takes effect at the next epoch (PR-10).
+3. Whenever the holder next wants to present using the updated attributes, they run Flow 1 again in full: request the (now-updated) attribute values and hash, assemble a new commitment, and submit it for insertion, receiving a new leaf and epoch. This step can only be holder-initiated — the commitment binds to `holder_secret`, which the issuer never learns (PR-5), so the issuer has no way to construct or insert a new leaf on the holder's behalf, regardless of how urgently the update matters.
+
+**Property:** an attribute edit, its revocation, and its re-issuance are three independent, explicitly-triggered actions — one at the issuer's own initiative, one only ever at the holder's — never an automatic chain reaction set off by the DB edit itself.
 
 ---
 
@@ -184,6 +194,7 @@ Identical to Flow 2 through step 3. Bob, whose income and portfolio both fall sh
 - **PR-10** A revoked credential SHALL fail verification from the epoch following revocation.
 - **PR-11** Revocation SHALL NOT reveal which credential was revoked to verifiers or observers.
 - **PR-12** Revocation latency SHALL be bounded and documented.
+- **PR-24** An update to a holder's attribute values SHALL NOT automatically revoke or replace an existing credential — revocation (PR-9) and re-issuance (Flow 1) SHALL remain distinct, explicitly-triggered actions (Flow 6).
 
 ### 7.4 Regulatory modelling
 
@@ -247,14 +258,14 @@ Identical to Flow 2 through step 3. Bob, whose income and portfolio both fall sh
 ### 8.5 Constraints
 
 - **TR-20** The system SHALL run entirely locally; no cloud service, hosted chain, or third-party API.
-- **TR-21** All development SHALL target macOS on the MacBook Pro 2024 as the sole build machine.
+- **TR-21** All development SHALL target macOS on the MacBook Air M3 as the sole build machine.
 - **TR-22** The system SHALL function with the iPhone and Mac on the same local network.
 
 ---
 
 ## 9. Technical Stack & Service Topology
 
-**Everything runs on the MacBook Pro 2024 except the holder app, which runs on the iPhone 14 Pro. The two communicate over the local network. Nothing is hosted externally.**
+**Everything runs on the MacBook Air M3 except the holder app, which runs on the iPhone 14 Pro. The two communicate over the local network. Nothing is hosted externally.**
 
 ### 9.1 Services
 
@@ -405,11 +416,11 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 - F4.2 The holder app SHALL generate eligibility proofs on-device per PR-1, PR-2, TR-7, TR-8.
 - F4.3 The app SHALL present consent showing what is proven and what is revealed (PR-16), and SHOULD do so with honest progress (PR-17).
 - F4.4 The platform frontend and backend SHALL implement Flow 2 end-to-end.
-- F4.5 All five user flows (§6) SHALL execute successfully.
+- F4.5 All six user flows (§6) SHALL execute successfully.
 - F4.6 The three demo scenarios (§5) SHALL be demonstrable in a single session.
 - F4.7 Unlinkability SHALL be evidenced by showing no public value correlates two presentations (PR-6).
 
-**Deliverable D3 — Working System:** iOS holder app, platform frontend and backend, all five flows operating, the three-scenario demo runnable end-to-end.
+**Deliverable D3 — Working System:** iOS holder app, platform frontend and backend, all six flows operating, the three-scenario demo runnable end-to-end.
 
 **Acceptance:** an observer can watch Alice gain access privately, invest again unlinkably, and be refused after revocation — without the platform ever receiving an attribute value.
 
@@ -463,6 +474,7 @@ To be stated plainly in all output.
 - **L9 — Merkle trees have fixed capacity, set by depth at deploy time.** Every tree in this system (valid-set, jurisdiction, sanctions) holds at most `2^depth` leaves; exceeding it means a full rebuild at greater depth, not an incremental add. This is cheaper to absorb than it sounds — F1.4's baseline shows constraint cost scales linearly with depth while capacity scales exponentially (depth 32 costs ~2× depth 16's constraints for 65,536× the capacity), so depth 20 alone (Phase 2's default) already covers over a million entries at already-measured cost. The actual open question is operational, not cryptographic: no validated estimate exists for real-world sanctions/jurisdiction list sizes against that ceiling, and a rebuild event (new root, all cached low-leaf lookups invalidated) has no defined procedure yet.
 - **L10 — Root and leaf authenticity rest entirely on registry access control, not a signature.** TR-3 originally called for the issuer to sign published roots with EdDSA; this PoC retires that and relies solely on the `EligibilityRegistry` contract restricting leaf insertion and root publication to the issuer's on-chain address. This is sufficient under L1's trust model (a single operator runs both issuer and holder, and issuer honesty is already assumed) but means authenticity depends entirely on that one contract's access-control logic being correct — there is no independent, contract-logic-free way to verify a root came from the issuer, the way a signature would provide. A real multi-operator deployment would need to reconsider this.
 - **L11 — `currentEpoch` is an event counter, not a clock, so P7 (expiry) measures events, not elapsed time.** `EligibilityRegistry.currentEpoch` increments on every valid-set root change — both issuance and revocation (`specs/phase-3/verification-infrastructure.md §1`) — with no fixed timer. P7's `expiry_epoch ≥ currentEpoch` check is therefore satisfied or violated by however many issuances and revocations happen to occur, not by how much real time passes: a credential could "expire" after a handful of unrelated events in a busy system, or never in a quiet one. This is a deliberate PoC simplification, not an oversight — decoupling expiry from a real timestamp (cross-checked against `block.timestamp` via the same recorded-value mechanism §5.4 already uses) or adding timer-based rotation alongside revocation would both work, but neither is implemented; P7 should be read as "expiry is event-count-based" rather than a real time bound until one of those is built.
+- **L12 — Whether an attribute edit warrants revocation is an issuer policy decision, not something the system automates.** Flow 6 keeps an attribute edit, its revocation, and its re-issuance as three independent, explicitly-triggered actions; nothing evaluates an edit and decides for the issuer whether it should trigger a revoke. A real deployment would need its own operational rules for that judgement (e.g. "any income or employment change re-triggers a compliance review") — this PoC leaves the decision entirely to the issuer operator, the same way L1 leaves issuer honesty itself unverified.
 
 ---
 
