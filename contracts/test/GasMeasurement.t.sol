@@ -22,25 +22,25 @@ contract GasMeasurementTest is Test {
     function test_Gas_BareVerifyProof_P1Only() public {
         Groth16VerifierP1Only verifier = new Groth16VerifierP1Only();
         uint256[2] memory pA = [
-            0x01aa0d5e3eb31d98301bbb5d2f3bfc541505129323d0fc72516c2fc41721d22d,
-            0x1f626a70b821ceb5b538b3a9801c1aef00fa8ebbc6a1b73b53dd155343751a68
+            0x027a13b88ea2621fb6dfee875fc621e46f9d83766fca744d1ea79d7a269a5bca,
+            0x0d7c8fcadc2721ea2d57929406a9f99dfd808d53e91fdac62a152c85a1038b62
         ];
         uint256[2][2] memory pB = [
             [
-                0x288fab1827b6491117aeef897501e3fd55551bb882ad957b5cc2ebe73379cec2,
-                0x2e03f2e8372831f84d9961cd871959436380bed70116efdf5ff500d2ca58bc24
+                0x25b3af8aa5c28f9bda85d930cd88ab4d9ec9ca00d0913850bc57643f62508011,
+                0x1491aea2843974ee6e7803a3aafcbeb66fa55aa6cb6624dbcb2ccfd6c92c14e0
             ],
             [
-                0x017e3b16ba4849b7f42304169f04d04fa90ba7ebee1963e91b1f131f3bff569a,
-                0x138460b219b1810354b2e9157475a58b84c311aa85e895197db6827cb67b6f26
+                0x28ad9678f8f73bd6613f6c965fa44f9116768998c577aee7ec8cfe422069cb8f,
+                0x14a4d84d73cf2d0104239882be5c37017c4b1a683d89e9f82d31d6c48ade4105
             ]
         ];
         uint256[2] memory pC = [
-            0x03c5f64b8739c29ee2e4a49ac5e1e1d2a02f426e9b85f6bc29d2d2d05f7c96fe,
-            0x17b47a0bdbf3784cb8cd63f3956860d77b19065e2109bb4cdea158b2c9eb7a4f
+            0x285e76bf43c6b4708f53962d25961ac939499cda35098ac86ba2592820e3b616,
+            0x2e0cc4da1424d02e2504f830e14bcde5fd6cb3c5d70d9d143a6be6980b88881a
         ];
         uint256[4] memory publicSignals = [
-            0x1286f39bcb5e397777332dbfa971c100c51f94b406ab03e48509a11b6a259100,
+            0x08d54883e989bc5094454a9625a15d0abe3b96de641f26cec85f3eef7bef8bab,
             0x0000000000000000000000000000000000000000000000000000000000000005,
             0x13da7c1d32569bf2a92e1aea89a0a85a9397cfc47a581edffe2fe55db5197fb2,
             0x0000000000000000000000000000000000000000000000000000000000000000
@@ -53,25 +53,25 @@ contract GasMeasurementTest is Test {
     function test_Gas_BareVerifyProof_CondAB() public {
         Groth16VerifierCondAB verifier = new Groth16VerifierCondAB();
         uint256[2] memory pA = [
-            0x0d4a7b40125b571b5cdd583372511b2ec470ddc69efe24a5f23347dc8b4ac4b8,
-            0x12abf7e8ae45d5959a2e0f4bd620f249cbedef72e39da31166c592525a528065
+            0x10126f77125a50f5976185086dd174e001dcb2fe6af15f6eecbdd55d0c863cf1,
+            0x01524f84d3bc480c790e238a846bd06575b6a459b27f1f1f33b9183fd5105494
         ];
         uint256[2][2] memory pB = [
             [
-                0x13d3c0e09af2d3efb8c5bc05562f64e66ae071d771349884a5e5664a2e85a255,
-                0x05eeb64ef3629cb40de3a4b534c32f4e5cf833627b0542afff0d7a48bcac5b3e
+                0x1cfca24717bbe84785fca0e83dfc4390e5c332c02f66553c07e56ec277f95aa1,
+                0x0a4d322dd6bb6eb9056c2363abb3d120074cf64f55011f118bea89be37da17a2
             ],
             [
-                0x0ffae68005b48a108c039d41361b177c6a154ecd6cef8a783a08b9d01037ced8,
-                0x11340ae8afa2918028058d4f8caf68f82615bf835c0e067d1541ff944ee28709
+                0x1a12cb0faf8feb4029e42951c1f25af8dd572e4602bbabde4619b815475f3056,
+                0x284b00d6e1d5fd968ccaec4b6dc7d0db5182e36464918f7fab9484c0f2d860ab
             ]
         ];
         uint256[2] memory pC = [
-            0x16a3a36d14b1712ac567546763ff8ded633746ef313ce92c9345821b2502d7c8,
-            0x16e318acce3af9170a6c1d64a05e47d001963ff63db20266e5e17dde2958af2c
+            0x0d7469662467cd82c82a7b32db8788b0841b8a52e06d992e193d28bc611a21ac,
+            0x0cd190f6a91e6f192eaf92175e65e2e8ac2ec237068bc9bf07ad460a74392c95
         ];
         uint256[4] memory publicSignals = [
-            0x1286f39bcb5e397777332dbfa971c100c51f94b406ab03e48509a11b6a259100,
+            0x08d54883e989bc5094454a9625a15d0abe3b96de641f26cec85f3eef7bef8bab,
             0x0000000000000000000000000000000000000000000000000000000000000005,
             0x13da7c1d32569bf2a92e1aea89a0a85a9397cfc47a581edffe2fe55db5197fb2,
             0x0000000000000000000000000000000000000000000000000000000000000000
@@ -124,25 +124,25 @@ contract GasMeasurementTest is Test {
         returns (uint256[2] memory pA, uint256[2][2] memory pB, uint256[2] memory pC, uint256[6] memory publicSignals)
     {
         pA = [
-            0x060fc32807bc7e7e464ebd95af36e153c9e0d5b5ead3dae26dc8d11a2cf683ab,
-            0x2b99305a8a98c1def6bdc1a0c49f2a2a11babbf586a9064828fb02f450d54c55
+            0x1ea2297bb145da2c150b49237b782f9dd3775af2fa8d8d1bcf3936393835e11e,
+            0x30355218c7356879250395d7619ea3529f0348ed8d7cef91420d62d49e2b2281
         ];
         pB = [
             [
-                0x1ca1a01f24aac569c0a1104eb1dc719240aa9691f5f529b8192009afe2994fa0,
-                0x251082d516d29c78bf63cd5c6859fccf74a4851da0e95af110284c933489d437
+                0x05aadf4ae017b5a751248e5d8f0e046c8a3d5717d79e807a69d91790818b14d4,
+                0x238a2e36252e0da1070d1bbf3a9e9a5a1d66fcbf4e385f0b796e34d4f976e1a2
             ],
             [
-                0x02881368a6989192d09fb52c6af353a84b09d7dba8c3604ff5ab7ba5d05687ac,
-                0x2a0b692d1c2c3d2f8a8cb6e6df86e93eb812f956621dc5ae40c38dc2feb5c968
+                0x04b51142a343ddc219611e43f703f3980884b70227504db7877d498c5c94f773,
+                0x0263200cf53d8fa9ba21be7dcd01bfb113559fe170f28cb8774695ec2cd85bd7
             ]
         ];
         pC = [
-            0x06af8d2f8363b3a6807a78b14a565634ab8dea65b1e7f001f2908459a40cb445,
-            0x03b2d48ee0b84cfab0003f71ca58a00b0f2b4e19a57c592f81c007b4b95bbb48
+            0x01df1e61a87819d2399a4e80d204ad2aa2296345a4cee7af93045758eaff510a,
+            0x17e03702ad1e5938a3743decd95f969ed660d199c9732a9aebce11d0f16f2c06
         ];
         publicSignals = [
-            0x1286f39bcb5e397777332dbfa971c100c51f94b406ab03e48509a11b6a259100,
+            0x08d54883e989bc5094454a9625a15d0abe3b96de641f26cec85f3eef7bef8bab,
             0x0a85c9dc3c9b7d1a4b73627f0ac4eedfb2a11a20cf5194bbb0e089384ee3f3ff,
             0x0b9fa49e73ac3e867872fcbe504c1a93652e83a030af877ec38d2fd7a9b51af3,
             0x13da7c1d32569bf2a92e1aea89a0a85a9397cfc47a581edffe2fe55db5197fb2,

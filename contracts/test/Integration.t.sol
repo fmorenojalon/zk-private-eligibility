@@ -44,25 +44,25 @@ contract IntegrationTest is Test {
         nullifiers.setAuthorized(address(policy));
 
         pA = [
-            0x060fc32807bc7e7e464ebd95af36e153c9e0d5b5ead3dae26dc8d11a2cf683ab,
-            0x2b99305a8a98c1def6bdc1a0c49f2a2a11babbf586a9064828fb02f450d54c55
+            0x1ea2297bb145da2c150b49237b782f9dd3775af2fa8d8d1bcf3936393835e11e,
+            0x30355218c7356879250395d7619ea3529f0348ed8d7cef91420d62d49e2b2281
         ];
         pB = [
             [
-                0x1ca1a01f24aac569c0a1104eb1dc719240aa9691f5f529b8192009afe2994fa0,
-                0x251082d516d29c78bf63cd5c6859fccf74a4851da0e95af110284c933489d437
+                0x05aadf4ae017b5a751248e5d8f0e046c8a3d5717d79e807a69d91790818b14d4,
+                0x238a2e36252e0da1070d1bbf3a9e9a5a1d66fcbf4e385f0b796e34d4f976e1a2
             ],
             [
-                0x02881368a6989192d09fb52c6af353a84b09d7dba8c3604ff5ab7ba5d05687ac,
-                0x2a0b692d1c2c3d2f8a8cb6e6df86e93eb812f956621dc5ae40c38dc2feb5c968
+                0x04b51142a343ddc219611e43f703f3980884b70227504db7877d498c5c94f773,
+                0x0263200cf53d8fa9ba21be7dcd01bfb113559fe170f28cb8774695ec2cd85bd7
             ]
         ];
         pC = [
-            0x06af8d2f8363b3a6807a78b14a565634ab8dea65b1e7f001f2908459a40cb445,
-            0x03b2d48ee0b84cfab0003f71ca58a00b0f2b4e19a57c592f81c007b4b95bbb48
+            0x01df1e61a87819d2399a4e80d204ad2aa2296345a4cee7af93045758eaff510a,
+            0x17e03702ad1e5938a3743decd95f969ed660d199c9732a9aebce11d0f16f2c06
         ];
         publicSignals = [
-            0x1286f39bcb5e397777332dbfa971c100c51f94b406ab03e48509a11b6a259100,
+            0x08d54883e989bc5094454a9625a15d0abe3b96de641f26cec85f3eef7bef8bab,
             0x0a85c9dc3c9b7d1a4b73627f0ac4eedfb2a11a20cf5194bbb0e089384ee3f3ff,
             0x0b9fa49e73ac3e867872fcbe504c1a93652e83a030af877ec38d2fd7a9b51af3,
             0x13da7c1d32569bf2a92e1aea89a0a85a9397cfc47a581edffe2fe55db5197fb2,
@@ -71,25 +71,25 @@ contract IntegrationTest is Test {
         ];
 
         pA_b = [
-            0x02d686299443eff1218d0283e26dba243984a302301c87c2ca41312ce5675f1a,
-            0x27381dbafba2e8f6a52f544ccdb3842313a21341cf5c112034b12710cebaf309
+            0x0debaaf4c432e677d8a2447caca801a5df40d82e3929cd4539520f7ca8f35387,
+            0x1165525c7cc933d485aaf6702ed49dcd22309e45b7638c73f83e43c31e3594c7
         ];
         pB_b = [
             [
-                0x303bcd50892bf9e3ba0f0592f209e935ce57dc5cd057f0034f7a192c9c1fca14,
-                0x03e4310c8d78d4af4a3aa7899e4c25aa3a4a6c5d8ca4ef21a0f14783414b8389
+                0x070be661e0df16ae68691d5ac69bad8e0e0f54376c5af139fdd9aa18df9eabb1,
+                0x224cf06cc082fd7e8c812bf0a35e37d96020c45b654e61e7764c6fcfe447ece8
             ],
             [
-                0x13cda175326819dd1805713a32c7cd3810935c5a4f9a7fd96abf9ae00d1e5ac5,
-                0x14da362f04a230c097330ea4bd9e2ec7f13445fe1ebe6168afdcf0e85dc84deb
+                0x219a2cbfbc0ec3ac780a9c95a5295cfcbcf804a14fe7b1b8a9982f1e50ea8909,
+                0x2ffd9c4922a50263a718f6bf4b1c6aedfeb9bdaf96325cfb9435f82721d0a58e
             ]
         ];
         pC_b = [
-            0x036c25efef519f9f1586cfdee762e2c8fbe1b9432bce523071155dc9824070a1,
-            0x046863f8b4338411ba7e305d74da1c516abad2a2a1bbb7e28ba9c83af60fb0e0
+            0x1eb825d1588d17c9d9d8942dad2cbe3380813a2d332a27a1591cc9843e6f80c7,
+            0x01f86656a0266e1fb14a594ce66fadbe9299a02460a6a780c16ee5b4d3c8edff
         ];
         publicSignals_b = [
-            0x217d5aa38475bc769e55ca53a0149e34bb355f215433a96dd3770e5b999102b8,
+            0x15ff5f37f52326d1cea0983b154fecf00c2344e850a4620f5cdc58eb804e606c,
             0x0a85c9dc3c9b7d1a4b73627f0ac4eedfb2a11a20cf5194bbb0e089384ee3f3ff,
             0x0b9fa49e73ac3e867872fcbe504c1a93652e83a030af877ec38d2fd7a9b51af3,
             0x13da7c1d32569bf2a92e1aea89a0a85a9397cfc47a581edffe2fe55db5197fb2,

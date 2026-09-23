@@ -143,11 +143,16 @@ template CircuitFull(depth) {
     p8.root <== validSetRoot;
     p8.valid === 1;
 
-    // P10: scope-bound nullifier.
-    component nullifierHash = Poseidon(3);
+    // P10: scope-bound nullifier. Deliberately excludes currentEpoch -
+    // credential-protocol.md §7 explains why: epoch changes system-wide on
+    // every issuance or revocation, so hashing it into the nullifier would
+    // mint a fresh, unconsumed value every time *anyone's* credential
+    // changes, defeating replay detection almost entirely in practice.
+    // currentEpoch is still enforced separately (P7 above, and the
+    // recorded-value freshness check in OfferingPolicy.presentEligibility).
+    component nullifierHash = Poseidon(2);
     nullifierHash.inputs[0] <== holder_secret;
-    nullifierHash.inputs[1] <== currentEpoch;
-    nullifierHash.inputs[2] <== scope;
+    nullifierHash.inputs[1] <== scope;
     nullifier <== nullifierHash.out;
 }
 

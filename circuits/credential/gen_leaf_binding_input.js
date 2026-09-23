@@ -12,6 +12,7 @@ async function main() {
         holder_secret: fixtures.ALICE.holder_secret.toString(),
         attr_hash: attrHash.toString(),
         leaf: fixtures.ALICE.leaf.toString(),
+        secret_hash: fixtures.ALICE.secret_hash.toString(),
     };
     fs.writeFileSync(path.join(__dirname, "input_leaf_binding.json"), JSON.stringify(input, null, 2));
     console.log("wrote input_leaf_binding.json");

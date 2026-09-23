@@ -167,7 +167,7 @@ function consumeIfUnused(uint256 nullifier) external;     // callable only by wh
 
 A full presentation is covered in [The presentation flow, end to end](#the-presentation-flow-end-to-end) below.
 
-**Why the mapping catches a replay at all.** `consumed` doesn't track "users" or "scopes" — it only ever sees one bare `uint256` and asks whether it's seen that exact number before. What makes replay detection work isn't nullifiers being unique; it's the opposite: `Poseidon(holder_secret, currentEpoch, scope)` is a *deterministic* function with no randomness in it. The same holder presenting to the same offering in the same epoch always produces the exact same nullifier, every time — even though the surrounding Groth16 proof itself is randomized (different `pA`/`pB`/`pC` on every generation), the nullifier output is not. That determinism is the entire mechanism: without it, a replay would just look like a brand-new number, and `consumed[nullifier]` would never find a match.
+**Why the mapping catches a replay at all.** `consumed` doesn't track "users" or "scopes" — it only ever sees one bare `uint256` and asks whether it's seen that exact number before. What makes replay detection work isn't nullifiers being unique; it's the opposite: `Poseidon(holder_secret, scope)` is a *deterministic* function with no randomness in it. The same holder presenting to the same offering always produces the exact same nullifier, every time, regardless of what epoch it happens to be — even though the surrounding Groth16 proof itself is randomized (different `pA`/`pB`/`pC` on every generation), the nullifier output is not. That determinism is the entire mechanism: without it, a replay would just look like a brand-new number, and `consumed[nullifier]` would never find a match. `epoch` is deliberately not part of this formula — `currentEpoch` changes system-wide on any holder's issuance or revocation (`verification-infrastructure.md §1`), so including it would make Alice's nullifier for one offering a different value every time epoch moved, defeating this exact determinism (`credential-protocol.md §7`).
 
 ### `OfferingPolicy.sol`
 
@@ -196,7 +196,7 @@ The three generated verifiers (`Groth16VerifierP1Only`/`CondAB`/`Full`, under `s
 What a real presentation against a live offering looks like, start to finish — this is what `OfferingPolicy.presentEligibility` and `NullifierRegistry.consumeIfUnused` are built to support, and it's the sequence the walkthrough below runs against a real deployed chain.
 
 1. The platform's presentation request tells the holder's device the offering's `jurisdictionRoot`, plus the current `sanctionsRoot`/`validSetRoot`/`currentEpoch` — including `scope`, which is just the `offeringId` here, so there's no separate lookup for it.
-2. The circuit computes `nullifier = Poseidon(holder_secret, currentEpoch, scope)` as an *output* — the holder doesn't choose it.
+2. The circuit computes `nullifier = Poseidon(holder_secret, scope)` as an *output* — the holder doesn't choose it, and it comes out the same value every time regardless of `currentEpoch`.
 3. The holder generates the Groth16 proof: `pA`, `pB`, `pC`, and public signals `[nullifier, jurisdictionRoot, sanctionsRoot, validSetRoot, currentEpoch, scope]` — the nullifier sits at index 0.
 4. The holder sends this to the platform, off-chain. Nothing has touched the chain yet.
 5. The platform — not the holder — submits `OfferingPolicy.presentEligibility(offeringId, pA, pB, pC, publicSignals)`.

@@ -25,15 +25,32 @@ include "../node_modules/circomlib/circuits/poseidon.circom";
 // (credential-protocol.md §4.3) - no new cryptographic construction,
 // just an equality constraint against a public leaf instead of a free
 // output.
+//
+// secret_hash (added after the nullifier fix, credential-protocol.md §7):
+// binds this proof to Poseidon(holder_secret) as a third public output,
+// so the issuer service can compare it against whatever secret_hash it
+// has on file for this holder's identity_commitment (verification-
+// infrastructure.md §4.1/§4.2) - re-issuance with a genuinely different
+// holder_secret produces a different secret_hash and is rejected. This
+// is a one-way commitment, not the secret itself, and doesn't touch
+// PR-5's guarantee (credential-protocol.md §4.1) - holder_secret is a
+// high-entropy random field element, and Poseidon isn't invertible, so
+// the issuer learning secret_hash gives it no way to recover
+// holder_secret.
 template LeafBinding() {
     signal input holder_secret;
     signal input attr_hash;
     signal input leaf;
+    signal input secret_hash;
 
-    component hasher = Poseidon(2);
-    hasher.inputs[0] <== holder_secret;
-    hasher.inputs[1] <== attr_hash;
-    hasher.out === leaf;
+    component leafHasher = Poseidon(2);
+    leafHasher.inputs[0] <== holder_secret;
+    leafHasher.inputs[1] <== attr_hash;
+    leafHasher.out === leaf;
+
+    component secretHasher = Poseidon(1);
+    secretHasher.inputs[0] <== holder_secret;
+    secretHasher.out === secret_hash;
 }
 
-component main {public [attr_hash, leaf]} = LeafBinding();
+component main {public [attr_hash, leaf, secret_hash]} = LeafBinding();

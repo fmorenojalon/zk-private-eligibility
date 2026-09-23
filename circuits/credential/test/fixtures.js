@@ -75,9 +75,18 @@ async function buildFixtures() {
     const F = poseidon.F;
     const toObj = (x) => F.toObject(x);
 
+    const hash1 = (a) => toObj(poseidon([a]));
     const hash2 = (a, b) => toObj(poseidon([a, b]));
     const hash3 = (a, b, c) => toObj(poseidon([a, b, c]));
     const hash9 = (arr) => toObj(poseidon(arr));
+
+    // secret_hash = Poseidon(holder_secret) - leaf_binding.circom, added
+    // after the nullifier fix (credential-protocol.md §7) so the issuer
+    // can detect re-issuance with a different holder_secret without ever
+    // learning the secret itself.
+    function secretHashOf(holderSecret) {
+        return hash1(holderSecret);
+    }
 
     // attr_hash = Poseidon(9 attributes), leaf = Poseidon(holder_secret,
     // attr_hash) - credential-protocol.md §4.2. Attribute order matches
@@ -136,6 +145,8 @@ async function buildFixtures() {
 
     ALICE.leaf = leafOf(ALICE.holder_secret, ALICE.attrs);
     BOB.leaf = leafOf(BOB.holder_secret, BOB.attrs);
+    ALICE.secret_hash = secretHashOf(ALICE.holder_secret);
+    BOB.secret_hash = secretHashOf(BOB.holder_secret);
 
     // Both real leaves live in the same tree, at different indices, so
     // Bob's rejection cases fail for the intended reason (condA) rather
@@ -236,11 +247,13 @@ async function buildFixtures() {
         ALLOWED_JURISDICTIONS,
         ALICE,
         BOB,
+        hash1,
         hash2,
         hash3,
         hash9,
         attrHashOf,
         leafOf,
+        secretHashOf,
         SparseMerkleTree,
         FIELD_MAX,
         SANCTIONS_ROOT,

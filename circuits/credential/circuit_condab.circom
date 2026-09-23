@@ -104,11 +104,15 @@ template CircuitCondAB(depth) {
     p8.valid === 1;
 
     // P10: scope-bound nullifier (credential-protocol.md §7). Always
-    // computed as output, never constrained.
-    component nullifierHash = Poseidon(3);
+    // computed as output, never constrained. Excludes currentEpoch
+    // deliberately - epoch changes system-wide on every issuance or
+    // revocation, so hashing it in would mint a fresh, unconsumed
+    // nullifier every time *anyone's* credential changes, defeating
+    // replay detection almost entirely. currentEpoch is still enforced
+    // separately (P7 above).
+    component nullifierHash = Poseidon(2);
     nullifierHash.inputs[0] <== holder_secret;
-    nullifierHash.inputs[1] <== currentEpoch;
-    nullifierHash.inputs[2] <== scope;
+    nullifierHash.inputs[1] <== scope;
     nullifier <== nullifierHash.out;
 }
 

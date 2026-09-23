@@ -14,10 +14,11 @@ include "range_predicates.circom";
 // MerkleBaseline itself (circuits/merkle-baseline/template.circom) remains
 // depth-parameterized for Phase 5's sweep.
 //
-// currentEpoch does double duty as P7's freshness comparison and P10's
-// nullifier input - credential-protocol.md §7 states these are the same
-// value ("epoch... matches the epoch of validSetRoot used in the same
-// proof"), so this is one public input, not two.
+// currentEpoch is used only for P7's freshness comparison - P10's
+// nullifier deliberately excludes it (credential-protocol.md §7): epoch
+// changes system-wide on every issuance or revocation, so hashing it into
+// the nullifier would mint a fresh, unconsumed value every time *anyone's*
+// credential changes, defeating replay detection almost entirely.
 template CircuitP1Only(depth) {
     // Credential attributes (credential-protocol.md §4.1) - all nine are
     // declared regardless of which predicates this variant checks, since
@@ -102,11 +103,11 @@ template CircuitP1Only(depth) {
 
     // P10: scope-bound nullifier (credential-protocol.md §7). Always
     // computed as output, never constrained - PR-4's all-or-nothing
-    // property comes from the predicates above, not this.
-    component nullifierHash = Poseidon(3);
+    // property comes from the predicates above, not this. Excludes
+    // currentEpoch deliberately - see the note above CircuitP1Only.
+    component nullifierHash = Poseidon(2);
     nullifierHash.inputs[0] <== holder_secret;
-    nullifierHash.inputs[1] <== currentEpoch;
-    nullifierHash.inputs[2] <== scope;
+    nullifierHash.inputs[1] <== scope;
     nullifier <== nullifierHash.out;
 }
 

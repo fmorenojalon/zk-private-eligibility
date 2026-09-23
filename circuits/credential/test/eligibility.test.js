@@ -171,16 +171,12 @@ describe("circuit_p1only.circom", function () {
     }
 
     // Case 15: Alice qualifies on income alone (condA = P1 v P2).
-    it("Alice: witness exists, nullifier is deterministic Poseidon(holder_secret, currentEpoch, scope)", async () => {
+    it("Alice: witness exists, nullifier is deterministic Poseidon(holder_secret, scope)", async () => {
         const input = inputFor(fixtures.ALICE);
         const w = await circuit.calculateWitness(input);
         await circuit.checkConstraints(w);
 
-        const expectedNullifier = fixtures.hash3(
-            fixtures.ALICE.holder_secret,
-            fixtures.CURRENT_EPOCH,
-            fixtures.SCOPE
-        );
+        const expectedNullifier = fixtures.hash2(fixtures.ALICE.holder_secret, fixtures.SCOPE);
         await circuit.assertOut(w, { nullifier: expectedNullifier });
     });
 
@@ -364,11 +360,7 @@ describe("circuit_full.circom", function () {
         const input = presentAs(fixtures.ALICE);
         const w = await circuit.calculateWitness(input);
         await circuit.checkConstraints(w);
-        const expectedNullifier = fixtures.hash3(
-            fixtures.ALICE.holder_secret,
-            fixtures.CURRENT_EPOCH,
-            fixtures.SCOPE
-        );
+        const expectedNullifier = fixtures.hash2(fixtures.ALICE.holder_secret, fixtures.SCOPE);
         await circuit.assertOut(w, { nullifier: expectedNullifier });
     });
 
@@ -463,32 +455,50 @@ describe("circuit_full.circom", function () {
         const input = presentAs(fixtures.ALICE);
         const w1 = await circuit.calculateWitness(input);
         const w2 = await circuit.calculateWitness(input);
-        const expectedNullifier = fixtures.hash3(fixtures.ALICE.holder_secret, fixtures.CURRENT_EPOCH, fixtures.SCOPE);
+        const expectedNullifier = fixtures.hash2(fixtures.ALICE.holder_secret, fixtures.SCOPE);
         await circuit.assertOut(w1, { nullifier: expectedNullifier });
         await circuit.assertOut(w2, { nullifier: expectedNullifier });
     });
 
-    it("Alice and Bob, same scope/epoch: distinct nullifiers", async () => {
+    // currentEpoch changes system-wide on every issuance or revocation,
+    // so a nullifier that depended on it would mint a fresh, unconsumed
+    // value the moment epoch moved forward for any reason - collapsing
+    // PR-7's replay detection to "within one epoch" instead of "within
+    // one scope." P10 drops currentEpoch from the nullifier entirely for
+    // this reason (P7/P8 still enforce epoch freshness separately); this
+    // confirms the same scope/holder_secret produces the same nullifier
+    // even across an epoch change.
+    it("Alice presents to the same scope at two different epochs: same nullifier both times", async () => {
+        const inputEpoch5 = presentAs(fixtures.ALICE);
+        const inputEpoch6 = presentAs(fixtures.ALICE, { currentEpoch: fixtures.CURRENT_EPOCH + 1n });
+        const w1 = await circuit.calculateWitness(inputEpoch5);
+        const w2 = await circuit.calculateWitness(inputEpoch6);
+        const expectedNullifier = fixtures.hash2(fixtures.ALICE.holder_secret, fixtures.SCOPE);
+        await circuit.assertOut(w1, { nullifier: expectedNullifier });
+        await circuit.assertOut(w2, { nullifier: expectedNullifier });
+    });
+
+    it("Alice and Bob, same scope: distinct nullifiers", async () => {
         const wAlice = await circuit.calculateWitness(presentAs(fixtures.ALICE));
         // Bob fails eligibility (case 2), so his own witness can't be
         // computed through the full circuit - the independence property
         // itself is a pure function of holder_secret and is checked
         // directly here rather than via a second full-circuit run.
-        const otherNullifier = fixtures.hash3(fixtures.BOB.holder_secret, fixtures.CURRENT_EPOCH, fixtures.SCOPE);
-        const aliceNullifier = fixtures.hash3(fixtures.ALICE.holder_secret, fixtures.CURRENT_EPOCH, fixtures.SCOPE);
+        const otherNullifier = fixtures.hash2(fixtures.BOB.holder_secret, fixtures.SCOPE);
+        const aliceNullifier = fixtures.hash2(fixtures.ALICE.holder_secret, fixtures.SCOPE);
         assert.notStrictEqual(aliceNullifier, otherNullifier);
         await circuit.assertOut(wAlice, { nullifier: aliceNullifier });
     });
 
-    it("Alice, same holder_secret and epoch, two different scopes: unrelated nullifiers", async () => {
+    it("Alice, same holder_secret, two different scopes: unrelated nullifiers", async () => {
         const input = presentAs(fixtures.ALICE);
         const otherScope = fixtures.hash2(222n, 0n);
         const w1 = await circuit.calculateWitness(input);
         input.scope = otherScope;
         const w2 = await circuit.calculateWitness(input);
 
-        const n1 = fixtures.hash3(fixtures.ALICE.holder_secret, fixtures.CURRENT_EPOCH, fixtures.SCOPE);
-        const n2 = fixtures.hash3(fixtures.ALICE.holder_secret, fixtures.CURRENT_EPOCH, otherScope);
+        const n1 = fixtures.hash2(fixtures.ALICE.holder_secret, fixtures.SCOPE);
+        const n2 = fixtures.hash2(fixtures.ALICE.holder_secret, otherScope);
         assert.notStrictEqual(n1, n2);
         await circuit.assertOut(w1, { nullifier: n1 });
         await circuit.assertOut(w2, { nullifier: n2 });

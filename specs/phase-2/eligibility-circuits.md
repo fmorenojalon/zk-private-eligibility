@@ -28,7 +28,7 @@ circuits/credential/
     └── eligibility.test.js       circom_tester + Mocha suite (F2.7)
 ```
 
-P5/P8 need no new file at all — both `include` `circuits/merkle-baseline/template.circom` directly and instantiate `MerkleBaseline` against their own root, reused as-is rather than redefined. P10's nullifier is a single inline `Poseidon(3)` call in each composite circuit file, small enough that a dedicated file would be pure overhead.
+P5/P8 need no new file at all — both `include` `circuits/merkle-baseline/template.circom` directly and instantiate `MerkleBaseline` against their own root, reused as-is rather than redefined. P10's nullifier is a single inline `Poseidon(2)` call in each composite circuit file, small enough that a dedicated file would be pure overhead.
 
 **Per-primitive file separation, not one shared template file.** Follows Phase 1's own convention (`range-baseline/`, `merkle-baseline/`, `eddsa-baseline/` as distinct directories, each scoped to one primitive) rather than bundling every new template into a single `predicates.circom`. Each of `range_predicates.circom`, `threshold.circom`, and `indexed_nonmembership.circom` corresponds to one distinct construction with its own reasoning and, eventually, its own constraint-count story — keeping them separate mirrors how Phase 1 measured Poseidon, Merkle, range, and EdDSA as four standalone circuits rather than one combined one, and avoids growing a single file to ten templates of increasingly unrelated shape as Phase 5 adds more.
 
@@ -63,7 +63,7 @@ Each predicate from `credential-protocol.md §5` becomes an independent, indepen
 | P6 | `IndexedNonMembership` against `sanctionsRoot` — takes the low leaf's `(value, nextValue, nextIndex)` triple plus its Merkle path, not a bare value | `indexed_nonmembership.circom` | new — `credential-protocol.md §5.3`'s embedded-next-pointer construction, not yet built anywhere |
 | P7 | inline `GreaterEqThan(expiry_epoch, currentEpoch)` | `range_predicates.circom` | — |
 | P8 | `MerkleBaseline(depth)` against `validSetRoot` (on `leaf`) | — included directly from `circuits/merkle-baseline/template.circom` | `circuits/merkle-baseline`'s `template.circom`, reused as-is |
-| P10 | `nullifier = Poseidon(holder_secret, epoch, scope)` | inline in `circuit_p1only.circom`/`circuit_full.circom` | direct Poseidon call, no sub-template needed |
+| P10 | `nullifier = Poseidon(holder_secret, scope)` — deliberately excludes `epoch` (`credential-protocol.md §7`) | inline in `circuit_p1only.circom`/`circuit_full.circom` | direct Poseidon call, no sub-template needed |
 
 *P9 (investment ceiling) is retired — removed from scope, `credential-protocol.md §5`. Not implemented here.*
 
@@ -120,9 +120,9 @@ Each predicate from `credential-protocol.md §5` becomes an independent, indepen
 | 8 | Alice's leaf removed from tree (revoked), old root supplied | `calculateWitness` throws (P8) |
 | 9 | Alice's `identity_commitment` present in `sanctionsRoot` | `calculateWitness` throws (P6) |
 | 10 | Alice, `jurisdiction_code` not in `jurisdictionRoot` | `calculateWitness` throws (P5) |
-| 11 | Alice presents twice to the same `scope`/`epoch` | second `nullifier` collides with first (registry-level, noted here but actually enforced on-chain per `credential-protocol.md §7` — this circuit-level test only confirms the *value* repeats, not the on-chain rejection, which is Phase 3) |
-| 12 | Alice and Charlie, same `scope`/`epoch` | distinct nullifiers (independent `holder_secret`) |
-| 13 | Alice, same `holder_secret` and `epoch`, two different `scope`s (Offering A vs. Offering B — `PRD.md` Scenario 2) | two nullifiers with no algebraic relationship to each other (PR-6, PR-7) — this is the unlinkability property the whole demo scenario rests on, and the one case in this matrix that isn't from the attack table (it's a positive property, not a rejection case) |
+| 11 | Alice presents twice to the same `scope` | second `nullifier` collides with first (registry-level, noted here but actually enforced on-chain per `credential-protocol.md §7` — this circuit-level test only confirms the *value* repeats, not the on-chain rejection, which is Phase 3) |
+| 12 | Alice and Charlie, same `scope` | distinct nullifiers (independent `holder_secret`) |
+| 13 | Alice, same `holder_secret`, two different `scope`s (Offering A vs. Offering B — `PRD.md` Scenario 2) | two nullifiers with no algebraic relationship to each other (PR-6, PR-7) — this is the unlinkability property the whole demo scenario rests on, and the one case in this matrix that isn't from the attack table (it's a positive property, not a rejection case) |
 | 14 | Standalone `ThresholdOfN(2,3)` unit test | correctly accepts 2-of-3 and 3-of-3, rejects 1-of-3 and 0-of-3 |
 | 15 | `circuit_p1only.circom`, Alice (income only) | witness exists, no `P3`/`P4` signals present |
 | 16 | `circuit_p1only.circom`, Bob | `calculateWitness` throws |
@@ -131,6 +131,7 @@ Each predicate from `credential-protocol.md §5` becomes an independent, indepen
 | 19 | Alice, but income €30,000 (fails P1) and portfolio exactly €100,000 (P2 boundary, strict `>`) | `calculateWitness` throws — confirms the exact value is correctly rejected, not accidentally accepted by a `≥` instead of `>` |
 | 20 | Alice, `financial_sector_months` exactly 12, `executive_months` 0 (P3 boundary, inclusive `≥`) | witness exists — confirms 12 is accepted, not accidentally requiring 13 |
 | 21 | Alice, `expiry_epoch` exactly equal to `currentEpoch` (P7 boundary, inclusive `≥`) | witness exists — confirms exact equality is accepted, not accidentally treated as expired |
+| 22 | Alice presents to the same `scope` at two different `currentEpoch` values | same `nullifier` both times — added as an addendum: a nullifier depending on `epoch` (a counter that advances system-wide on *any* holder's issuance or revocation) would mint a fresh, unconsumed value the moment epoch moves forward for any reason, collapsing PR-7's replay detection from "within one scope" to "within one epoch." P10 deliberately excludes `epoch` (§5's table, `credential-protocol.md §7`) for exactly this reason — case 11 above covers same-epoch replay; this case is what exercises the cross-epoch property directly |
 
 Cases involving `P1`–`P4` combination logic or `P5`/`P6` (1–4, 9–10, 19–20) need `circuit_full.circom`; cases 15–16 are explicitly against `circuit_p1only.circom`; cases 17–18 are explicitly against `circuit_condab.circom`; case 14 is a standalone template test, no circuit file. Everything else (5–8, 11–13, 21) exercises `P7`/`P8`/`P10`, which are structural to all three circuits regardless of predicate-count configuration, so it doesn't matter which one runs them — `circuit_full.circom` is the natural default. (P9 would have joined this structural group; it's retired, per §4.)
 

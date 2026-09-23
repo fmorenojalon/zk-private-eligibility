@@ -170,6 +170,8 @@ Answers "a holder's attribute value changes at the issuer — what happens?" No 
 
 **Property:** an attribute edit, its revocation, and its re-issuance are three independent, explicitly-triggered actions — one at the issuer's own initiative, one only ever at the holder's — never an automatic chain reaction set off by the DB edit itself.
 
+**If the holder cannot reproduce their original `holder_secret`** (lost or replaced device), step 3 is blocked by design (`credential-protocol.md §4.3.1`) — the issuer must first perform a deliberate, audited reset (PR-25) clearing the stored binding before the holder's next submission can succeed.
+
 ---
 
 ## 7. Product Requirements
@@ -180,7 +182,7 @@ Answers "a holder's attribute value changes at the issuer — what happens?" No 
 - **PR-2** Proof generation SHALL occur entirely on-device, with no proving service.
 - **PR-3** A verifier SHALL learn only: eligible/not eligible, the scope-bound nullifier, and the public inputs required for verification.
 - **PR-4** A failed proof SHALL NOT disclose which predicate failed.
-- **PR-5** The holder secret SHALL be generated on-device and SHALL NOT be transmitted or recoverable by the issuer.
+- **PR-5** The holder secret SHALL be generated on-device and SHALL NOT be transmitted or recoverable by the issuer. (A one-way commitment to it, `secret_hash = Poseidon(holder_secret)`, MAY reach the issuer — `credential-protocol.md §4.3.1` — since `holder_secret` is a high-entropy random field element and Poseidon has no known inverse; this lets the issuer compare secrets across submissions without ever being able to recover one.)
 
 ### 7.2 Unlinkability
 
@@ -218,6 +220,7 @@ Answers "a holder's attribute value changes at the issuer — what happens?" No 
 ### 7.7 Issuance integrity
 
 - **PR-23** The issuer SHALL verify that a submitted credential commitment is bound to the specific attribute values the issuer verified, before inserting it, without the issuer learning the holder secret.
+- **PR-25** The issuer SHALL be able to reset a holder's `secret_hash` binding via a deliberate, audited action, so a lost or compromised `holder_secret` does not result in permanent exclusion from re-issuance (L13).
 
 ---
 
@@ -399,6 +402,7 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 - F3.5 Revocation SHALL cause proof failure from the following epoch (PR-10) without holder cooperation (PR-9).
 - F3.6 Per-offering eligibility policy SHALL be configurable on-chain (PR-20), constrained to a `jurisdictionRoot` the issuer has actually approved (not one the platform invents — `specs/phase-3/verification-infrastructure.md §1`/§3.1), and each offering's access grant SHALL verify a submitted proof's `jurisdictionRoot` and `scope` public inputs match that offering's own registered values — cryptographic proof validity alone does not confirm a proof was generated for *this* offering (`credential-protocol.md §5.4`). — done
 - F3.7 Gas SHALL be measured across predicate configurations (TR-14). — done
+- F3.8 A `secret_hash` binding SHALL let the issuer detect re-issuance with a different `holder_secret`, with a deliberate, audited reset path for a lost or compromised one (PR-5, PR-25) — added as an addendum after a design review of the re-issuance path surfaced the gap; see `credential-protocol.md §4.3.1`.
 
 **Deliverable D2 — Verification Infrastructure:** deployed contracts, working issuer service, functioning epoch rotation and revocation, gas measurements.
 
@@ -475,6 +479,7 @@ To be stated plainly in all output.
 - **L10 — Root and leaf authenticity rest entirely on registry access control, not a signature.** TR-3 originally called for the issuer to sign published roots with EdDSA; this PoC retires that and relies solely on the `EligibilityRegistry` contract restricting leaf insertion and root publication to the issuer's on-chain address. This is sufficient under L1's trust model (a single operator runs both issuer and holder, and issuer honesty is already assumed) but means authenticity depends entirely on that one contract's access-control logic being correct — there is no independent, contract-logic-free way to verify a root came from the issuer, the way a signature would provide. A real multi-operator deployment would need to reconsider this.
 - **L11 — `currentEpoch` is an event counter, not a clock, so P7 (expiry) measures events, not elapsed time.** `EligibilityRegistry.currentEpoch` increments on every valid-set root change — both issuance and revocation (`specs/phase-3/verification-infrastructure.md §1`) — with no fixed timer. P7's `expiry_epoch ≥ currentEpoch` check is therefore satisfied or violated by however many issuances and revocations happen to occur, not by how much real time passes: a credential could "expire" after a handful of unrelated events in a busy system, or never in a quiet one. This is a deliberate PoC simplification, not an oversight — decoupling expiry from a real timestamp (cross-checked against `block.timestamp` via the same recorded-value mechanism §5.4 already uses) or adding timer-based rotation alongside revocation would both work, but neither is implemented; P7 should be read as "expiry is event-count-based" rather than a real time bound until one of those is built.
 - **L12 — Whether an attribute edit warrants revocation is an issuer policy decision, not something the system automates.** Flow 6 keeps an attribute edit, its revocation, and its re-issuance as three independent, explicitly-triggered actions; nothing evaluates an edit and decides for the issuer whether it should trigger a revoke. A real deployment would need its own operational rules for that judgement (e.g. "any income or employment change re-triggers a compliance review") — this PoC leaves the decision entirely to the issuer operator, the same way L1 leaves issuer honesty itself unverified.
+- **L13 — Re-issuance requires reusing the original `holder_secret`, enforced cryptographically; recovering from a lost or compromised secret requires a deliberate issuer reset.** `leaf_binding.circom`'s `secret_hash` binding (`credential-protocol.md §4.3.1`) makes reusing the same `holder_secret` something the issuer can verify without ever learning it — a holder can no longer silently reset their own nullifier space by re-issuing with a fresh one. But `holder_secret` lives only on the holder's device, so a lost or replaced phone means it can never be reproduced again, and a compromised secret can never be rotated — without a way out, either failure mode would be permanent exclusion, unacceptable as a product. The system therefore needs an issuer-controlled reset (PR-25): clearing the stored `secret_hash` binding after a manual, audited step, which does reopen a fresh nullifier space for that holder — but only through deliberate issuer intervention, not silently or self-service. The residual limitation is exactly that reset path: it's an operational control, not a cryptographic one, and nothing here bounds how often an issuer could invoke it — the same kind of issuer-side rate-limiting L12 already leaves as an operator responsibility applies here too. This PoC also assumes one device, and therefore one `holder_secret`, per person — the `secret_hash` check is keyed on `holder_id` accordingly. A person legitimately holding multiple accounts or devices at this issuer is out of scope.
 
 ---
 

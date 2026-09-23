@@ -19,12 +19,13 @@ describe("leaf_binding.circom", function () {
         circuit = await wasm_tester(path.join(CREDENTIAL_DIR, "leaf_binding.circom"));
     });
 
-    it("Alice's real leaf, correctly bound to her real attr_hash: witness exists", async () => {
+    it("Alice's real leaf, correctly bound to her real attr_hash and secret_hash: witness exists", async () => {
         const attrHash = fixtures.attrHashOf(fixtures.ALICE.attrs);
         const w = await circuit.calculateWitness({
             holder_secret: fixtures.ALICE.holder_secret,
             attr_hash: attrHash,
             leaf: fixtures.ALICE.leaf,
+            secret_hash: fixtures.ALICE.secret_hash,
         });
         await circuit.checkConstraints(w);
     });
@@ -39,6 +40,7 @@ describe("leaf_binding.circom", function () {
                 holder_secret: fixtures.ALICE.holder_secret,
                 attr_hash: bobAttrHash,
                 leaf: fixtures.ALICE.leaf,
+                secret_hash: fixtures.ALICE.secret_hash,
             })
         );
     });
@@ -50,6 +52,7 @@ describe("leaf_binding.circom", function () {
                 holder_secret: fixtures.ALICE.holder_secret,
                 attr_hash: attrHash,
                 leaf: fixtures.ALICE.leaf + 1n,
+                secret_hash: fixtures.ALICE.secret_hash,
             })
         );
     });
@@ -61,6 +64,25 @@ describe("leaf_binding.circom", function () {
                 holder_secret: fixtures.ALICE.holder_secret + 1n,
                 attr_hash: attrHash,
                 leaf: fixtures.ALICE.leaf,
+                secret_hash: fixtures.ALICE.secret_hash,
+            })
+        );
+    });
+
+    // Added after the nullifier fix (credential-protocol.md §7): re-issuance
+    // now depends on the issuer being able to detect a different
+    // holder_secret via this circuit's secret_hash binding. A wrong
+    // secret_hash - claiming a different holder_secret produced this
+    // leaf than the one that actually did - must be rejected here,
+    // independent of attr_hash/leaf both being genuinely correct.
+    it("wrong secret_hash (doesn't match Poseidon(holder_secret)) with an otherwise-real attr_hash/leaf pair: calculateWitness throws", async () => {
+        const attrHash = fixtures.attrHashOf(fixtures.ALICE.attrs);
+        await assert.rejects(() =>
+            circuit.calculateWitness({
+                holder_secret: fixtures.ALICE.holder_secret,
+                attr_hash: attrHash,
+                leaf: fixtures.ALICE.leaf,
+                secret_hash: fixtures.ALICE.secret_hash + 1n,
             })
         );
     });
