@@ -1,6 +1,6 @@
 # zk-private-eligibility
 
-A greenfield zero-knowledge credential system: a holder proves on their own phone, via a ZK-SNARK (Groth16, circom), that they qualify as a sophisticated EU investor — without disclosing income, portfolio, employment, or identity — while a verifier (an investment platform) checks that proof on-chain, learning nothing beyond yes/no. An issuer (a bank) attests the underlying facts; the same credential can be reused unlinkably and is correctly refused once revoked. Solo applied-research PoC in collaboration with an AI coding agent. Full rationale in [`specs/PRD.md`](specs/PRD.md).
+A greenfield zero-knowledge credential system: a holder proves on their own phone, via a ZK-SNARK (Groth16, circom), that they qualify as a sophisticated EU investor — without disclosing income, portfolio, employment, or identity — while a verifier (an investment platform) checks that proof on-chain, learning nothing beyond yes/no. An issuer (a bank) attests the underlying facts; the same credential can be reused unlinkably and is correctly refused once revoked. Full rationale in [`specs/PRD.md`](specs/PRD.md).
 
 ## Start here
 
