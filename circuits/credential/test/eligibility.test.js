@@ -138,7 +138,7 @@ describe("threshold.circom", function () {
 
 // Sub-phase 2 (specs/phase-2/eligibility-circuits.md §5): the first
 // composite circuit - condA (P1 v P2) plus the always-structural
-// P7/P8/P10. Test matrix cases 15-16.
+// P7/P8/P9. Test matrix cases 15-16.
 describe("circuit_p1only.circom", function () {
     this.timeout(60000);
 
@@ -295,7 +295,7 @@ describe("circuit_condab.circom", function () {
 });
 
 // Sub-phase 4b (specs/phase-2/eligibility-circuits.md §5): the complexity-
-// dial maximum - the full EU 2-of-2 regime, P1-P8 and P10 (P9 retired).
+// dial maximum - the full EU 2-of-2 regime, P1-P9.
 // Test matrix cases 1-13, 19-21 run against this circuit.
 describe("circuit_full.circom", function () {
     this.timeout(60000);
@@ -464,7 +464,7 @@ describe("circuit_full.circom", function () {
     // so a nullifier that depended on it would mint a fresh, unconsumed
     // value the moment epoch moved forward for any reason - collapsing
     // PR-7's replay detection to "within one epoch" instead of "within
-    // one scope." P10 drops currentEpoch from the nullifier entirely for
+    // one scope." P9 drops currentEpoch from the nullifier entirely for
     // this reason (P7/P8 still enforce epoch freshness separately); this
     // confirms the same scope/holder_secret produces the same nullifier
     // even across an epoch change.

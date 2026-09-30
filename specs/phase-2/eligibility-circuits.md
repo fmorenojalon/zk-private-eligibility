@@ -9,7 +9,7 @@
 
 ## 1. Objective
 
-Implement the credential commitment and the full EU-regime predicate logic (P1–P10) as circom circuits, parameterized per TR-6, with a correctness test suite proving eligible holders produce valid proofs and ineligible ones cannot (D1's acceptance bar).
+Implement the credential commitment and the full EU-regime predicate logic (P1–P9) as circom circuits, parameterized per TR-6, with a correctness test suite proving eligible holders produce valid proofs and ineligible ones cannot (D1's acceptance bar).
 
 ---
 
@@ -28,13 +28,13 @@ circuits/credential/
     └── eligibility.test.js       circom_tester + Mocha suite (F2.7)
 ```
 
-P5/P8 need no new file at all — both `include` `circuits/merkle-baseline/template.circom` directly and instantiate `MerkleBaseline` against their own root, reused as-is rather than redefined. P10's nullifier is a single inline `Poseidon(2)` call in each composite circuit file, small enough that a dedicated file would be pure overhead.
+P5/P8 need no new file at all — both `include` `circuits/merkle-baseline/template.circom` directly and instantiate `MerkleBaseline` against their own root, reused as-is rather than redefined. P9's nullifier is a single inline `Poseidon(2)` call in each composite circuit file, small enough that a dedicated file would be pure overhead.
 
 **Per-primitive file separation, not one shared template file.** Follows Phase 1's own convention (`range-baseline/`, `merkle-baseline/`, `eddsa-baseline/` as distinct directories, each scoped to one primitive) rather than bundling every new template into a single `predicates.circom`. Each of `range_predicates.circom`, `threshold.circom`, and `indexed_nonmembership.circom` corresponds to one distinct construction with its own reasoning and, eventually, its own constraint-count story — keeping them separate mirrors how Phase 1 measured Poseidon, Merkle, range, and EdDSA as four standalone circuits rather than one combined one, and avoids growing a single file to ten templates of increasingly unrelated shape as Phase 5 adds more.
 
 **Why three circuit files, not a single "predicate count N" parameterized template.** TR-6 says "parameterised over... predicate count," but the predicates aren't interchangeable units a generic integer can select between — P1 is a range check, P8 is Merkle membership, P4 is threshold logic over the other two. A single template taking `N` and picking "the first N predicates" doesn't correspond to any real question the complexity parameters want answered. Concretely: `circuit_p1only.circom`, `circuit_condab.circom`, and `circuit_full.circom` share every sub-template file above and differ only in which of them each top-level circuit instantiates and constrains — that *is* the parameterization TR-6 asks for, just realized as named configurations rather than one integer setting.
 
-**Why three, not two.** Two range endpoints (minimum, maximum) would only show that cost differs between "P1 alone" and "everything" — not how that difference is distributed. `circuit_condab.circom` sits between them: the full `P4 = ThresholdOfN(2,2)` composition over P1–P4, plus the always-structural P7/P8/P10, but without P5/P6. Once constraint counts are measured, this turns one combined delta into two attributable ones: `cost(circuit_condab) − cost(circuit_p1only)` isolates P3+P4; `cost(circuit_full) − cost(circuit_condab)` isolates P5+P6 — the more interesting number, since P6 (`IndexedNonMembership`) is the one predicate here with no existing baseline to compare against.
+**Why three, not two.** Two range endpoints (minimum, maximum) would only show that cost differs between "P1 alone" and "everything" — not how that difference is distributed. `circuit_condab.circom` sits between them: the full `P4 = ThresholdOfN(2,2)` composition over P1–P4, plus the always-structural P7/P8/P9, but without P5/P6. Once constraint counts are measured, this turns one combined delta into two attributable ones: `cost(circuit_condab) − cost(circuit_p1only)` isolates P3+P4; `cost(circuit_full) − cost(circuit_condab)` isolates P5+P6 — the more interesting number, since P6 (`IndexedNonMembership`) is the one predicate here with no existing baseline to compare against.
 
 Phase 5's fuller complexity-parameter sweep (F5.1) can add more named configurations the same way, reusing the same sub-template files.
 
@@ -50,7 +50,7 @@ Fully specified in `credential-protocol.md §4.2`: `attr_hash = Poseidon(9 attri
 
 ---
 
-## 4. F2.2 — Predicate Templates (P1–P10)
+## 4. F2.2 — Predicate Templates (P1–P9)
 
 Each predicate from `credential-protocol.md §5` becomes an independent, independently-testable circom template, organized into files by primitive per §2's separation:
 
@@ -63,9 +63,7 @@ Each predicate from `credential-protocol.md §5` becomes an independent, indepen
 | P6 | `IndexedNonMembership` against `sanctionsRoot` — takes the low leaf's `(value, nextValue, nextIndex)` triple plus its Merkle path, not a bare value | `indexed_nonmembership.circom` | new — `credential-protocol.md §5.3`'s embedded-next-pointer construction, not yet built anywhere |
 | P7 | inline `GreaterEqThan(expiry_epoch, currentEpoch)` | `range_predicates.circom` | — |
 | P8 | `MerkleBaseline(depth)` against `validSetRoot` (on `leaf`) | — included directly from `circuits/merkle-baseline/template.circom` | `circuits/merkle-baseline`'s `template.circom`, reused as-is |
-| P10 | `nullifier = Poseidon(holder_secret, scope)` — deliberately excludes `epoch` (`credential-protocol.md §7`) | inline in `circuit_p1only.circom`/`circuit_full.circom` | direct Poseidon call, no sub-template needed |
-
-*P9 (investment ceiling) is retired — removed from scope, `credential-protocol.md §5`. Not implemented here.*
+| P9 | `nullifier = Poseidon(holder_secret, scope)` — deliberately excludes `epoch` (`credential-protocol.md §7`) | inline in `circuit_p1only.circom`/`circuit_full.circom` | direct Poseidon call, no sub-template needed |
 
 `MerkleBaseline` gets instantiated **twice** in `circuit_full.circom` (P5 against `jurisdictionRoot`, P8 against `validSetRoot`) — same template, different root/path per call. `IndexedNonMembership` (P6) is the one predicate in this table with no existing baseline to reuse — genuinely new circuit logic, not an adaptation of `circuits/{range,merkle,eddsa}-baseline`.
 
@@ -73,11 +71,11 @@ Each predicate from `credential-protocol.md §5` becomes an independent, indepen
 
 ## 5. F2.3 — EU 2-of-2 Regime Composition
 
-`circuit_full.circom` wires: `condA = P1 ∨ P2`, `condB = P3`, then `P4 = ThresholdOfN(2, 2)([condA, condB])`. Per `credential-protocol.md §5`, `P4`'s output plus `P7` (freshness), `P8` (not revoked), and `P10` (nullifier, always computed as output) together constitute a valid presentation. `P5`/`P6` (jurisdiction/sanctions) are included whenever `jurisdictionRoot`/`sanctionsRoot` are supplied as public inputs — always, in `circuit_full.circom`.
+`circuit_full.circom` wires: `condA = P1 ∨ P2`, `condB = P3`, then `P4 = ThresholdOfN(2, 2)([condA, condB])`. Per `credential-protocol.md §5`, `P4`'s output plus `P7` (freshness), `P8` (not revoked), and `P9` (nullifier, always computed as output) together constitute a valid presentation. `P5`/`P6` (jurisdiction/sanctions) are included whenever `jurisdictionRoot`/`sanctionsRoot` are supplied as public inputs — always, in `circuit_full.circom`.
 
-`circuit_p1only.circom` wires only `condA = P1 ∨ P2` (no `P4`, no `P3`) alongside the always-structural `P7`/`P8`/`P10` — it proves "income or portfolio meets the minimum, and the credential is valid and unrevoked," nothing about professional experience. This is the complexity-parameter range's lower end, not a real regime — the EU regime always requires the full 2-of-2 composition.
+`circuit_p1only.circom` wires only `condA = P1 ∨ P2` (no `P4`, no `P3`) alongside the always-structural `P7`/`P8`/`P9` — it proves "income or portfolio meets the minimum, and the credential is valid and unrevoked," nothing about professional experience. This is the complexity-parameter range's lower end, not a real regime — the EU regime always requires the full 2-of-2 composition.
 
-`circuit_condab.circom` wires the identical `P4 = ThresholdOfN(2, 2)([condA, condB])` composition as `circuit_full.circom`, plus the always-structural `P7`/`P8`/`P10` — but omits `P5`/`P6` entirely: no `jurisdictionRoot`/`sanctionsRoot` public inputs, no membership/non-membership checks. It exists specifically as the midpoint of the complexity-parameter range (§2), isolating P5/P6's cost once constraint counts are measured, rather than to model any real regulatory variant.
+`circuit_condab.circom` wires the identical `P4 = ThresholdOfN(2, 2)([condA, condB])` composition as `circuit_full.circom`, plus the always-structural `P7`/`P8`/`P9` — but omits `P5`/`P6` entirely: no `jurisdictionRoot`/`sanctionsRoot` public inputs, no membership/non-membership checks. It exists specifically as the midpoint of the complexity-parameter range (§2), isolating P5/P6's cost once constraint counts are measured, rather than to model any real regulatory variant.
 
 ---
 
@@ -85,11 +83,11 @@ Each predicate from `credential-protocol.md §5` becomes an independent, indepen
 
 `ThresholdOfN(M, N)` takes `N` boolean signals, outputs 1 iff at least `M` are true — a summation constraint (`Σ conditions ≥ M`), not an enumerated OR-of-ANDs, per `credential-protocol.md §5.2`. Used here at `M=2, N=2`.
 
-**Test-suite addition beyond what F2.4 strictly requires:** the PRD (§2.3, post-MVP extension #7) explicitly claims this construct's genericity is what makes reinstating a third condition later "a configuration change, not a redesign." That claim is worth substantiating rather than just asserting — `eligibility.test.js` includes a standalone unit test instantiating `ThresholdOfN(2, 3)` directly (not wired into a full credential circuit, just the isolated template) over three synthetic booleans, confirming 2-of-3 combinations correctly pass and fail. Cheap to add, and it's the difference between claiming genericity and demonstrating it.
+**Test-suite addition beyond what F2.4 strictly requires:** the generic `ThresholdOfN` construct's value is that reinstating a third condition later is a configuration change, not a redesign — worth substantiating rather than just asserting. `eligibility.test.js` includes a standalone unit test instantiating `ThresholdOfN(2, 3)` directly (not wired into a full credential circuit, just the isolated template) over three synthetic booleans, confirming 2-of-3 combinations correctly pass and fail. Cheap to add, and it's the difference between claiming genericity and demonstrating it.
 
 ---
 
-*F2.5 (investment ceiling) is retired along with P9 — removed from scope, `credential-protocol.md §5`. No section here.*
+*F2.5 (investment ceiling) is retired — removed from scope, `credential-protocol.md §5`. No section here.*
 
 ---
 
@@ -131,9 +129,9 @@ Each predicate from `credential-protocol.md §5` becomes an independent, indepen
 | 19 | Alice, but income €30,000 (fails P1) and portfolio exactly €100,000 (P2 boundary, strict `>`) | `calculateWitness` throws — confirms the exact value is correctly rejected, not accidentally accepted by a `≥` instead of `>` |
 | 20 | Alice, `financial_sector_months` exactly 12, `executive_months` 0 (P3 boundary, inclusive `≥`) | witness exists — confirms 12 is accepted, not accidentally requiring 13 |
 | 21 | Alice, `expiry_epoch` exactly equal to `currentEpoch` (P7 boundary, inclusive `≥`) | witness exists — confirms exact equality is accepted, not accidentally treated as expired |
-| 22 | Alice presents to the same `scope` at two different `currentEpoch` values | same `nullifier` both times — added as an addendum: a nullifier depending on `epoch` (a counter that advances system-wide on *any* holder's issuance or revocation) would mint a fresh, unconsumed value the moment epoch moves forward for any reason, collapsing PR-7's replay detection from "within one scope" to "within one epoch." P10 deliberately excludes `epoch` (§5's table, `credential-protocol.md §7`) for exactly this reason — case 11 above covers same-epoch replay; this case is what exercises the cross-epoch property directly |
+| 22 | Alice presents to the same `scope` at two different `currentEpoch` values | same `nullifier` both times — added as an addendum: a nullifier depending on `epoch` (a counter that advances system-wide on *any* holder's issuance or revocation) would mint a fresh, unconsumed value the moment epoch moves forward for any reason, collapsing PR-7's replay detection from "within one scope" to "within one epoch." P9 deliberately excludes `epoch` (§5's table, `credential-protocol.md §7`) for exactly this reason — case 11 above covers same-epoch replay; this case is what exercises the cross-epoch property directly |
 
-Cases involving `P1`–`P4` combination logic or `P5`/`P6` (1–4, 9–10, 19–20) need `circuit_full.circom`; cases 15–16 are explicitly against `circuit_p1only.circom`; cases 17–18 are explicitly against `circuit_condab.circom`; case 14 is a standalone template test, no circuit file. Everything else (5–8, 11–13, 21) exercises `P7`/`P8`/`P10`, which are structural to all three circuits regardless of predicate-count configuration, so it doesn't matter which one runs them — `circuit_full.circom` is the natural default. (P9 would have joined this structural group; it's retired, per §4.)
+Cases involving `P1`–`P4` combination logic or `P5`/`P6` (1–4, 9–10, 19–20) need `circuit_full.circom`; cases 15–16 are explicitly against `circuit_p1only.circom`; cases 17–18 are explicitly against `circuit_condab.circom`; case 14 is a standalone template test, no circuit file. Everything else (5–8, 11–13, 21) exercises `P7`/`P8`/`P9`, which are structural to all three circuits regardless of predicate-count configuration, so it doesn't matter which one runs them — `circuit_full.circom` is the natural default.
 
 **End-to-end proof validation — the "valid proofs" half of D1's acceptance bar.** The 21-case matrix above only ever runs `calculateWitness`/`checkConstraints` — it proves a satisfying assignment exists, not that the circuit actually survives a trusted setup and produces a proof that verifies. That's a different claim, and D1 requires it explicitly ("eligible holders produce valid proofs"). So, once per circuit configuration (`circuit_p1only`, `circuit_condab`, `circuit_full` — three runs total, not per test case), run the full F1.4 pipeline against Alice's eligible fixture: `circom --r1cs --wasm`, Powers-of-Tau + `snarkjs groth16 setup` + one dev contribution, `groth16 prove`, `groth16 verify`. This is deliberately not run per test case — full setup is expensive relative to `circom_tester`'s witness-only path, and correctness across the 21 cases is already the witness suite's job; this pass exists only to confirm genuine end-to-end provability, once, per configuration.
 
@@ -162,7 +160,7 @@ No other new tools — everything else (circom 2.2.3, the Poseidon/Merkle/compar
 | F2.2 | §4 — one template per predicate, organized into files by primitive (§2) |
 | F2.3 | §6 — the standalone `ThresholdOfN(2,3)` test demonstrates the EU 2-of-3 regime is *architecturally* satisfiable (PR-13); §5's `circuit_full.circom` only wires the actual 2-of-2 MVP scope (PRD L7) — the third condition isn't instantiated as a live circuit here |
 | F2.4 | §6 — `ThresholdOfN`, plus the N=3 genericity test |
-| F2.5 | *Retired*, along with P9 — investment ceiling removed from scope |
+| F2.5 | *Retired* — investment ceiling removed from scope |
 | F2.6 | §2 — three named configurations sharing depth-parameterized sub-templates |
 | F2.7 | §7 — 21-case matrix via `circom_tester`, derived from the threat model's attack table (plus the unlinkability property and three boundary cases that aren't attack-table rows) |
 | D1 deliverable | All of the above, plus §7's end-to-end setup+prove+verify pass per configuration, with constraint counts and timings recorded in `circuits/credential/PHASE2_RESULTS.md` |

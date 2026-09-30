@@ -9,7 +9,7 @@ include "indexed_nonmembership.circom";
 
 // Phase 2 (F2.1-F2.4, complexity-dial maximum). The full EU 2-of-2 regime:
 // P1-P4 threshold composition, P5/P6 (jurisdiction/sanctions membership),
-// plus the always-structural P7/P8/P10 - eligibility-circuits.md §5.
+// plus the always-structural P7/P8/P9 - eligibility-circuits.md §5.
 // P5/P6 are unconditional here, not optional-if-supplied: jurisdictionRoot
 // and sanctionsRoot are always public inputs to this circuit, matching
 // "included whenever jurisdictionRoot/sanctionsRoot are supplied as
@@ -143,7 +143,7 @@ template CircuitFull(depth) {
     p8.root <== validSetRoot;
     p8.valid === 1;
 
-    // P10: scope-bound nullifier. Deliberately excludes currentEpoch -
+    // P9: scope-bound nullifier. Deliberately excludes currentEpoch -
     // credential-protocol.md §7 explains why: epoch changes system-wide on
     // every issuance or revocation, so hashing it into the nullifier would
     // mint a fresh, unconsumed value every time *anyone's* credential

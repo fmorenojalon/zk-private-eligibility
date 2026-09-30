@@ -30,16 +30,12 @@ Qualifies on **any one** of:
 
 ### 2.2 EU — *sophisticated investor* (ECSPR 2020/1503, Annex II)
 
-Qualifies on **at least two of three** criteria in the full regulation. This MVP implements the first two below; the third (market activity) is dropped for scope reasons — see §2.3 and L7.
+Qualifies on **at least two of three** criteria in the full regulation. This MVP implements the first two below; the third (market activity) is dropped for scope reasons — see L7.
 
 | # | Criterion | Threshold |
 | --- | --- | --- |
 | (a) | Gross income or portfolio | ≥ €60,000/yr or portfolio > €100,000 |
 | (b) | Professional experience | ≥ 1 yr financial sector in a knowledge-requiring role or ≥ 12 mo executive at a qualifying entity |
-
-### 2.3 Why this regulation suits ZK
-
-The EU structure is a *threshold predicate over heterogeneous sub-conditions* — substantive circuit design rather than a single comparison, even reduced to 2-of-2 for the MVP (§2.2). Modelling it as a generic M-of-N comparator, rather than hardcoding "both," is what keeps this a genuine architectural reference case rather than an AND gate — and is what makes cross-jurisdiction extensibility (re-adding condition (c), or the Spanish regime) a configuration change rather than a rebuild.
 
 ---
 
@@ -55,9 +51,7 @@ The EU structure is a *threshold predicate over heterogeneous sub-conditions* �
 | P6 | subject ∉ sanctions set | set non-membership | both |
 | P7 | credential not expired | freshness | both |
 | P8 | credential not revoked | Merkle membership in current valid-set root | both |
-| P10 | scope-bound single use | nullifier | both |
-
-*P9 is retired — the investment ceiling predicate (below max(€1,000, 5% of net worth)) was removed from scope; this project targets sophisticated/accredited investors only, not the non-sophisticated-investor protections that predicate existed for. P10 keeps its number rather than shifting to P9, to avoid renumbering churn across specs.*
+| P9 | scope-bound single use | nullifier | both |
 
 **Complexity parameters.** Because greenfield primitives are uniformly cheap, the measurement axis is deliberate complexity scaling: Merkle depth (16 → 20 → 32), predicate count (P1 alone → full set), allowlist/sanctions set sizes, and regime (EU 2-of-2, L7).
 
@@ -69,28 +63,25 @@ Each leaf in the valid-set tree is a Poseidon commitment over the holder's **com
 
 ---
 
-## 4. Core Design Challenges
+## 4. Key Design Decisions and Trade-offs
+
+The two tensions that most shaped the protocol. Both follow established patterns (Semaphore-style Merkle membership and nullifiers); the mechanisms are specified in `credential-protocol.md`.
 
 ### 4.1 Revocation Without Breaking Unlinkability
 
-Naive revocation publishes revoked credential identifiers; proving you are absent from that list reveals your identifier and destroys unlinkability.
+Checking a credential against a revocation list would require the holder to reveal its ID, and the same ID on every presentation links them all (PR-6).
 
-A Merkle allowlist of valid credentials with epoch rotation. The holder proves membership in the current valid-set root without revealing which leaf. Revocation removes the leaf and rotates the root.
+Instead, the issuer keeps a Merkle tree of valid credential commitments and publishes only its root on-chain, where only the issuer can update it (L10). The holder proves in zero knowledge that their commitment is in the tree without revealing which one. Revoking removes the leaf and publishes a new root, which reveals nothing about who was revoked (PR-11). Verifiers accept only the current root; otherwise a revoked holder's old proof would still pass.
 
-Revocation takes effect only at an epoch boundary, creating a bounded exposure window. Holders must refresh their Merkle path on each root change.
+The cost is that every root change forces holders to refresh their Merkle path and re-prove, and revocation takes effect only once the new root is on-chain (L2, L11). Mechanism: `credential-protocol.md §6`.
 
-### 4.2 Cap Enforcement vs. Unlinkability
+### 4.2 Single Use per Offering Without Cross-Offering Linkage
 
-Enforcing a cumulative cap requires per-investor state; unlinkability forbids correlating presentations. These requirements are in direct conflict.
+Each successful presentation grants access to an offering, so a holder must not be able to present to the same offering twice. A persistent per-holder identifier would prevent that, but it would also link the holder's activity across every offering (PR-6).
 
-Scope-bound nullifiers derived from (holder secret, epoch, scope). Scope identifies a specific offering — the tokenized investment product a holder is proving eligibility for (§5's real-estate offering, for instance). Each presentation to a given offering produces a nullifier unique to that (holder, offering, epoch) combination; presenting to a *different* offering produces an unrelated one.
+Instead, each presentation emits a nullifier derived from the holder's secret and the offering, and the chain rejects any nullifier already used (PR-7, TR-13). The same holder and offering always produce the same value; different offerings produce unrelated ones. The nullifier excludes the epoch, so waiting for a new root doesn't reset it. The holder's secret is also fixed at first issuance, so re-issuing with a fresh one is rejected.
 
-This solves two problems at once:
-
-- **Reuse within one offering becomes detectable.** Without it, nothing stops a holder from presenting eligibility to the same offering an unlimited number of times, inflating their effective allocation past whatever a single investor is meant to receive. If Alice presents to an offering twice, her second nullifier collides with her first and is rejected on-chain (PR-7, TR-13). Charlie, a different investor presenting to that *same* offering, produces his own independent nullifier — it depends on his own holder secret — so his activity is entirely unaffected by Alice's.
-- **Presentations to different offerings stay unlinkable.** Alice investing in two unrelated offerings produces two nullifiers with no discoverable relationship to each other or to her identity (PR-6, PR-7) — this is the mechanism behind §5's Scenario 2.
-
-Cumulative caps *across* offerings cannot be enforced without linkage. This limitation is stated explicitly in the output rather than papered over.
+The cost is that limits spanning offerings, such as a cumulative investment cap, can't be enforced without linking presentations (L3). Mechanism: `credential-protocol.md §7`, `§4.3.1`.
 
 ---
 
@@ -124,8 +115,8 @@ Six flows define the system's behaviour.
 2. Issuer looks up its own authoritative records for this holder and discloses the 9 attribute values — the issuer is the *source* of this data, not a checker of a holder's self-reported claims.
 3. Issuer computes the expected attribute hash (`attr_hash`) from those same records and sends it alongside.
 4. Holder now has both the attribute values and a holder-controlled secret that never leaves the device — the credential is assembled. Holder computes `attr_hash = Poseidon(9 attribute values)` — the same hash the issuer just computed in step 3, which should match — then computes the commitment `leaf = Poseidon(holder_secret, attr_hash)`, binding the credential to a secret only the holder knows. Holder generates a proof that `leaf` was genuinely built from this `attr_hash`, without revealing the secret (PR-23, `credential-protocol.md §4.3`), and sends the issuer `leaf` and the proof.
-5. Issuer verifies the proof against the `attr_hash` it computed in step 3, then inserts the commitment into the valid-set tree (access-controlled to the issuer's address — L10).
-6. Issuer publishes the updated root for the current epoch and returns the resulting Merkle path to the holder.
+5. Issuer verifies the proof against the `attr_hash` it computed in step 3, then inserts the commitment into the valid-set tree, within its own service.
+6. Issuer publishes the updated root for the current epoch (access-controlled to the issuer's address — L10) and returns the resulting Merkle path to the holder.
 7. Holder stores the credential and Merkle path on-device.
 
 **Property:** the holder secret is generated on-device and never leaves it.
@@ -201,7 +192,7 @@ Answers "a holder's attribute value changes at the issuer — what happens?" No 
 ### 7.4 Regulatory modelling
 
 - **PR-13** The system SHALL support the EU regime over a single credential — 2-of-2 in practice, not the full 2-of-3 originally scoped (condition (c) dropped, L7).
-- **PR-14** — *Retired.* Enforced the investment ceiling predicate (P9, retired — §3) relative to undisclosed net worth; removed along with it, scope now being sophisticated/accredited investors only.
+- **PR-14** — *Retired.* Enforced the investment-ceiling predicate relative to undisclosed net worth; removed along with it (§12).
 - **PR-15** Deviations from actual regulation SHALL be documented.
 
 ### 7.5 Holder experience
@@ -230,7 +221,7 @@ Answers "a holder's attribute value changes at the issuer — what happens?" No 
 
 - **TR-1** All circuits SHALL be authored in circom and proven with Groth16 over BN254.
 - **TR-2** Commitments and nullifiers SHALL use Poseidon.
-- **TR-3** — *Retired.* Called for issuer signatures via EdDSA over Baby Jubjub; this PoC relies on registry access control instead (leaf and root writes both restricted to the issuer's on-chain address) rather than an additional signature — see L10.
+- **TR-3** — *Retired.* Called for issuer signatures via EdDSA over Baby Jubjub; this PoC relies on registry access control instead (root writes restricted to the issuer's on-chain address; leaf writes happen off-chain, under the issuer service's own control — L1) rather than an additional signature — see L10.
 - **TR-4** Set membership SHALL use Merkle inclusion proofs; set non-membership SHALL use a documented construction.
 - **TR-5** Circuit-specific trusted setup SHALL use a public Powers-of-Tau ceremony file; setup time and artifact size SHALL be recorded.
 - **TR-6** Circuits SHALL be parameterised over Merkle depth and predicate count to support the complexity parameters.
@@ -376,10 +367,10 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 **Requirements**
 
 - F2.1 The credential SHALL bind all §2 attributes to a holder secret via a Poseidon commitment (TR-2). — done
-- F2.2 Circuits SHALL implement P1–P10 (P9 retired — §3). — done
+- F2.2 Circuits SHALL implement P1–P9. — done
 - F2.3 The EU 2-of-2 regime (condition (c) dropped — L7) SHALL be satisfiable from a single credential (PR-13). — done
 - F2.4 The threshold-of-N predicate (P4) SHALL be implemented as a first-class construct. — done
-- F2.5 — *Retired,* along with P9 (§3): the investment ceiling requirement no longer applies now that scope is sophisticated/accredited investors only.
+- F2.5 — *Retired:* the investment-ceiling requirement no longer applies (§12).
 - F2.6 Circuits SHALL be parameterised per TR-6. — done
 - F2.7 A test suite SHALL demonstrate correct acceptance and rejection across eligible, ineligible, boundary, and malformed inputs. — done
 - F2.8 A leaf-binding proof SHALL let the issuer verify a submitted commitment is bound to the issuer-verified attribute hash, without learning the holder secret (PR-23, TR-23) — added as an addendum after a design review surfaced the gap; see `credential-protocol.md §4.3`. — done
@@ -398,7 +389,7 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 
 - F3.1 Registry contracts SHALL maintain all roots and consumed nullifiers per TR-12. — done
 - F3.2 Nullifier replay within a scope SHALL be rejected on-chain (TR-13). — done
-- F3.3 The issuer service SHALL expose issuance and revocation over local HTTP, and SHALL publish roots to the chain; both leaf insertion and root publication SHALL be restricted to the issuer's on-chain address (access control — TR-3 retired, L10).
+- F3.3 The issuer service SHALL expose issuance and revocation over local HTTP, and SHALL publish roots to the chain; root publication SHALL be restricted to the issuer's on-chain address (access control — TR-3 retired, L10). Leaf insertion happens off-chain inside the issuer service; the chain only ever sees roots (`specs/phase-3/verification-infrastructure.md §4.1`).
 - F3.4 The issuer SHALL maintain the valid-set tree with epoch rotation per §4.1.
 - F3.5 Revocation SHALL cause proof failure from the following epoch (PR-10) without holder cooperation (PR-9).
 - F3.6 Per-offering eligibility policy SHALL be configurable on-chain (PR-20), constrained to a `jurisdictionRoot` the issuer has actually approved (not one the platform invents — `specs/phase-3/verification-infrastructure.md §1`/§3.1), and each offering's access grant SHALL verify a submitted proof's `jurisdictionRoot` and `scope` public inputs match that offering's own registered values — cryptographic proof validity alone does not confirm a proof was generated for *this* offering (`credential-protocol.md §5.4`). — done
@@ -478,7 +469,7 @@ To be stated plainly in all output.
 - **L7 — EU regime is 2-of-2, not 2-of-3.** Condition (c) (market activity) was dropped as the most expensive sub-condition — it was never implemented, so it has no P-number in §3's table. The threshold predicate is built as a generic M-of-N construct (F2.4), so this is a configuration limit rather than an architectural one — but the MVP result characterises 2-of-2, not the full regulation.
 - **L8 — Spanish regime not implemented.** Retained in §2.1 as regulatory reference only. Its unique predicate, advisory-contract membership, is consequently out of scope too — it was never implemented either, so it likewise has no P-number.
 - **L9 — Merkle trees have fixed capacity, set by depth at deploy time.** Every tree in this system (valid-set, jurisdiction, sanctions) holds at most `2^depth` leaves; exceeding it means a full rebuild at greater depth, not an incremental add. This is cheaper to absorb than it sounds — F1.4's baseline shows constraint cost scales linearly with depth while capacity scales exponentially (depth 32 costs ~2× depth 16's constraints for 65,536× the capacity), so depth 20 alone (Phase 2's default) already covers over a million entries at already-measured cost. The actual open question is operational, not cryptographic: no validated estimate exists for real-world sanctions/jurisdiction list sizes against that ceiling, and a rebuild event (new root, all cached low-leaf lookups invalidated) has no defined procedure yet.
-- **L10 — Root and leaf authenticity rest entirely on registry access control, not a signature.** TR-3 originally called for the issuer to sign published roots with EdDSA; this PoC retires that and relies solely on the `EligibilityRegistry` contract restricting leaf insertion and root publication to the issuer's on-chain address. This is sufficient under L1's trust model (a single operator runs both issuer and holder, and issuer honesty is already assumed) but means authenticity depends entirely on that one contract's access-control logic being correct — there is no independent, contract-logic-free way to verify a root came from the issuer, the way a signature would provide. A real multi-operator deployment would need to reconsider this.
+- **L10 — Root authenticity rests entirely on registry access control, not a signature; leaf authenticity rests on the issuer service instead.** TR-3 originally called for the issuer to sign published roots with EdDSA; this PoC retires that and relies solely on the `EligibilityRegistry` contract restricting root publication to the issuer's on-chain address. Leaf authenticity has no on-chain mechanism at all — the chain never sees individual leaves, so it rests entirely on the issuer service being operated honestly (L1). This is sufficient under L1's trust model (a single operator runs both issuer and holder, and issuer honesty is already assumed) but means authenticity depends entirely on that one contract's access-control logic being correct, for roots, and on the issuer service's own integrity, for leaves — there is no independent, contract-logic-free way to verify a root came from the issuer, the way a signature would provide. A real multi-operator deployment would need to reconsider this.
 - **L11 — `currentEpoch` is an event counter, not a clock, so P7 (expiry) measures events, not elapsed time.** `EligibilityRegistry.currentEpoch` increments on every valid-set root change — both issuance and revocation (`specs/phase-3/verification-infrastructure.md §1`) — with no fixed timer. P7's `expiry_epoch ≥ currentEpoch` check is therefore satisfied or violated by however many issuances and revocations happen to occur, not by how much real time passes: a credential could "expire" after a handful of unrelated events in a busy system, or never in a quiet one. This is a deliberate PoC simplification, not an oversight — decoupling expiry from a real timestamp (cross-checked against `block.timestamp` via the same recorded-value mechanism §5.4 already uses) or adding timer-based rotation alongside revocation would both work, but neither is implemented; P7 should be read as "expiry is event-count-based" rather than a real time bound until one of those is built.
 - **L12 — Whether an attribute edit warrants revocation is an issuer policy decision, not something the system automates.** Flow 6 keeps the edit and its issuer-initiated revocation independent and explicitly-triggered; re-issuance is separate again and atomically replaces the holder's prior leaf when triggered. Nothing evaluates an edit and decides for the issuer whether it should trigger a revoke. A real deployment would need its own operational rules for that judgement (e.g. "any income or employment change re-triggers a compliance review") — this PoC leaves the decision entirely to the issuer operator, the same way L1 leaves issuer honesty itself unverified.
 - **L13 — Re-issuance requires reusing the original `holder_secret`, enforced cryptographically; recovering from a lost or compromised secret requires a deliberate issuer reset.** `leaf_binding.circom`'s `secret_hash` binding (`credential-protocol.md §4.3.1`) makes reusing the same `holder_secret` something the issuer can verify without ever learning it — a holder can no longer silently reset their own nullifier space by re-issuing with a fresh one. But `holder_secret` lives only on the holder's device, so a lost or replaced phone means it can never be reproduced again, and a compromised secret can never be rotated — without a way out, either failure mode would be permanent exclusion, unacceptable as a product. The system therefore needs an issuer-controlled reset (PR-25): clearing the stored `secret_hash` binding after a manual, audited step, which does reopen a fresh nullifier space for that holder — but only through deliberate issuer intervention, not silently or self-service. The residual limitation is exactly that reset path: it's an operational control, not a cryptographic one, and nothing here bounds how often an issuer could invoke it — the same kind of issuer-side rate-limiting L12 already leaves as an operator responsibility applies here too. This PoC also assumes one device, and therefore one `holder_secret`, per person — the `secret_hash` check is keyed on `holder_id` accordingly. A person legitimately holding multiple accounts or devices at this issuer is out of scope.
@@ -500,6 +491,7 @@ To be stated plainly in all output.
 - Recursion or proof aggregation.
 - Public testnet or mainnet deployment.
 - Real KYC, real issuer integration, production security.
+- Protections for non-sophisticated retail investors (e.g. investment ceilings). The MVP targets accredited/sophisticated investors only, which both regimes in §2 already gate on.
 
 **Post-MVP extensions**, in rough order of value:
 

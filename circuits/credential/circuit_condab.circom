@@ -7,7 +7,7 @@ include "range_predicates.circom";
 include "threshold.circom";
 
 // Phase 2 (F2.1-F2.4, complexity-dial midpoint). Full P1-P4 threshold
-// composition, plus the always-structural P7/P8/P10 - but no P5/P6
+// composition, plus the always-structural P7/P8/P9 - but no P5/P6
 // (jurisdiction/sanctions membership). Exists specifically to isolate
 // P5/P6's constraint cost from P3/P4's once measured
 // (eligibility-circuits.md §2's "why three, not two"), not to model any
@@ -103,7 +103,7 @@ template CircuitCondAB(depth) {
     p8.root <== validSetRoot;
     p8.valid === 1;
 
-    // P10: scope-bound nullifier (credential-protocol.md §7). Always
+    // P9: scope-bound nullifier (credential-protocol.md §7). Always
     // computed as output, never constrained. Excludes currentEpoch
     // deliberately - epoch changes system-wide on every issuance or
     // revocation, so hashing it in would mint a fresh, unconsumed

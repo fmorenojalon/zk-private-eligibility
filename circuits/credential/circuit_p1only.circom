@@ -6,7 +6,7 @@ include "../merkle-baseline/template.circom";
 include "range_predicates.circom";
 
 // Phase 2 (F2.1, F2.2, F2.3 bookend). Condition A only (P1 v P2), plus the
-// always-structural P7/P8/P10 - specs/phase-2/eligibility-circuits.md §5.
+// always-structural P7/P8/P9 - specs/phase-2/eligibility-circuits.md §5.
 // The complexity-dial minimum bookend, not a real EU regime configuration -
 // the EU regime always needs the full 2-of-2 composition (circuit_full.circom).
 //
@@ -14,7 +14,7 @@ include "range_predicates.circom";
 // MerkleBaseline itself (circuits/merkle-baseline/template.circom) remains
 // depth-parameterized for Phase 5's sweep.
 //
-// currentEpoch is used only for P7's freshness comparison - P10's
+// currentEpoch is used only for P7's freshness comparison - P9's
 // nullifier deliberately excludes it (credential-protocol.md §7): epoch
 // changes system-wide on every issuance or revocation, so hashing it into
 // the nullifier would mint a fresh, unconsumed value every time *anyone's*
@@ -101,7 +101,7 @@ template CircuitP1Only(depth) {
     p8.root <== validSetRoot;
     p8.valid === 1;
 
-    // P10: scope-bound nullifier (credential-protocol.md §7). Always
+    // P9: scope-bound nullifier (credential-protocol.md §7). Always
     // computed as output, never constrained - PR-4's all-or-nothing
     // property comes from the predicates above, not this. Excludes
     // currentEpoch deliberately - see the note above CircuitP1Only.

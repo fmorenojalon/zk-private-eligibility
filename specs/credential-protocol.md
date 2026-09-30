@@ -1,7 +1,7 @@
 # Credential Protocol
 
 **Delivered by:** F1.5 (Phase 1) · **Feeds:** Phase 2 (F2.1–F2.7) circuit implementation, and every later phase that touches the credential, predicates, or nullifier
-**Status: satisfied**, with one number since drifted. Every other Phase 1 requirement was built directly against this document without needing further design decisions — F1.1/F1.4's `poseidon-baseline` circuits implement the arity-2/arity-10 commitment structure from §4.2 as it stood at the time (and [BASELINE_RESULTS.md](../circuits/BASELINE_RESULTS.md) empirically confirms the arity-cost reasoning behind choosing a single Poseidon call over a 5+5-split design, which still holds); F1.4's `merkle-baseline` implements the boolean-constrained inclusion construction §5.3 calls for; F1.2's Groth16Verifier and F1.4's `eddsa-baseline` reflect §3's membership-only attestation decision (no in-circuit signature check, but the primitive still measured standalone). §4.2's schema has since dropped one attribute (`net_worth`, alongside P9's retirement — §5), making the real commitment arity 9, not 10 — Phase 1's arity-10 baseline is no longer an exact hit for what Phase 2 implements, though it remains the closest existing reference point (§4.2 has the detail). Nothing else has needed revision since the arity fix ([git history](../TOOLCHAIN.md), commit `0d010fe`).
+**Status: satisfied**, with one number since drifted. Every other Phase 1 requirement was built directly against this document without needing further design decisions — F1.1/F1.4's `poseidon-baseline` circuits implement the arity-2/arity-10 commitment structure from §4.2 as it stood at the time (and [BASELINE_RESULTS.md](../circuits/BASELINE_RESULTS.md) empirically confirms the arity-cost reasoning behind choosing a single Poseidon call over a 5+5-split design, which still holds); F1.4's `merkle-baseline` implements the boolean-constrained inclusion construction §5.3 calls for; F1.2's Groth16Verifier and F1.4's `eddsa-baseline` reflect §3's membership-only attestation decision (no in-circuit signature check, but the primitive still measured standalone). §4.2's schema has since dropped one attribute (`net_worth`, alongside the investment-ceiling predicate's retirement — §5), making the real commitment arity 9, not 10 — Phase 1's arity-10 baseline is no longer an exact hit for what Phase 2 implements, though it remains the closest existing reference point (§4.2 has the detail). Nothing else has needed revision since the arity fix ([git history](../TOOLCHAIN.md), commit `0d010fe`).
 
 > This document is the design contract for the credential, its predicates, the epoch/revocation model, the nullifier, and the threat model. Per the Phase 1 acceptance criterion, it must be complete enough to implement Phase 2 against without further design decisions. Items that are genuinely deferred are called out explicitly in §9, not left implicit.
 
@@ -11,7 +11,7 @@
 
 Covers the full protocol design — not just the primitives Phase 1 measures. Phase 2 implements what's specified here; Phase 1 only builds standalone baseline circuits for the four primitives in [phase-1/toolchain-baseline.md](phase-1/toolchain-baseline.md).
 
-Reflects the PRD v4.1 scope: EU regime only, 2-of-2 threshold (P4), predicates P1–P10, single-tree credential (§3.1), no in-circuit issuer-signature verification (decided below).
+Reflects the PRD v4.1 scope: EU regime only, 2-of-2 threshold (P4), predicates P1–P9, single-tree credential (§3.1), no in-circuit issuer-signature verification (decided below). Scoped to accredited/sophisticated investors only — `PRD.md §12` has the reasoning.
 
 ---
 
@@ -32,9 +32,9 @@ Reflects the PRD v4.1 scope: EU regime only, 2-of-2 threshold (P4), predicates P
 
 **Decision:** the eligibility circuit does **not** verify an EdDSA signature in-circuit. Merkle membership of a credential's leaf in the issuer's valid-set tree *is* the attestation.
 
-**Why this is sufficient:** under §3.1's single tree, full-attribute leaves, a leaf can only enter the tree through an issuer-authorized transaction — the `EligibilityRegistry` contract (Phase 3, TR-12) accepts leaf insertions only from the issuer's address. Tree membership is therefore already proof that the issuer inserted this exact leaf; an additional in-circuit signature check over the same commitment would be redundant — the actual security boundary is the registry's access control, not an in-circuit check.
+**Why this is sufficient:** under §3.1's single tree, full-attribute leaves, a leaf can only enter the tree through the issuer's own service (Phase 3, `verification-infrastructure.md §4.1`), and only the issuer's on-chain address can publish the root that commits to it — `EligibilityRegistry` accepts root updates only from that address (Phase 3, TR-12). Tree membership is therefore already proof that the issuer inserted this exact leaf; an additional in-circuit signature check over the same commitment would be redundant — the actual security boundary is the issuer's exclusive control of the tree: off-chain through its own service (L1), and on-chain through root-publication access control (TR-12), not an in-circuit check.
 
-**TR-3 (issuer EdDSA signatures) is retired, not relocated.** Root publication relies solely on the same access-control mechanism already justified above — the `EligibilityRegistry` contract (Phase 3, TR-12) accepts root updates only from the issuer's address, exactly as it does leaf insertions. A signature would add one real property access control alone doesn't (independent verifiability without trusting the registry contract's own code — PRD §11 L10), but this PoC's threat model doesn't depend on it, since issuer honesty is already assumed (L1). Cut for that reason, not because it's technically infeasible — `circuits/eddsa-baseline` still exists as a measured Phase 1 baseline, just unused by the deployed protocol.
+**TR-3 (issuer EdDSA signatures) is retired, not relocated.** Root publication relies solely on the access-control mechanism justified above — the `EligibilityRegistry` contract (Phase 3, TR-12) accepts root updates only from the issuer's address. A signature would add one real property access control alone doesn't (independent verifiability without trusting the registry contract's own code — PRD §11 L10), but this PoC's threat model doesn't depend on it, since issuer honesty is already assumed (L1). Cut for that reason, not because it's technically infeasible — `circuits/eddsa-baseline` still exists as a measured Phase 1 baseline, just unused by the deployed protocol.
 
 **Cost consequence:** the eligibility circuit avoids the most expensive of the four F1.4 baseline primitives entirely. The EdDSA baseline circuit is still built and measured in Phase 1 (F1.4 requires it as a standalone reference number), but it does not appear in the Phase 2 credential circuit's constraint count.
 
@@ -57,7 +57,7 @@ Reflects the PRD v4.1 scope: EU regime only, 2-of-2 threshold (P4), predicates P
 | `issued_epoch` | uint | — | epoch at issuance |
 | `expiry_epoch` | uint | P7 | |
 | `schema_version` | uint | — | constant per circuit version, allows future schema migration without ambiguity |
-| `holder_secret` | field element | P8, P10 | generated on-device (PR-5); **never a circuit input to any other party's process, always private** |
+| `holder_secret` | field element | P8, P9 | generated on-device (PR-5); **never a circuit input to any other party's process, always private** |
 
 **`issued_epoch` and `expiry_epoch`: who sets them, and relative to what.** Both are chosen by the issuer at the same moment it computes `attr_hash` (Flow 1 step 3, `specs/PRD.md`) — before the holder has even generated a proof, let alone before the leaf is inserted. `issued_epoch` records `currentEpoch` at that moment, which is necessarily at least one epoch behind the leaf's actual landing epoch, since insertion itself is what advances `currentEpoch` (`verification-infrastructure.md §1`). No predicate reads `issued_epoch` (§5's table), so this is a recordkeeping imprecision, not a correctness gap.
 
@@ -121,9 +121,7 @@ P4 (the M-of-N reference case) evaluates `sum(ConditionA, ConditionB) ≥ M`, wi
 | P6 | subject ∉ sanctions set | private: `identity_commitment`, low-leaf triple (`value`, `nextValue`, `nextIndex`) and its Merkle path; public: `sanctionsRoot` | indexed-tree non-membership via embedded next-pointer, §5.3 |
 | P7 | credential not expired | private: `expiry_epoch`; public: `currentEpoch` | `expiry_epoch ≥ currentEpoch` |
 | P8 | credential not revoked | private: `leaf`, Merkle path; public: `validSetRoot` | Merkle inclusion of `leaf` |
-| P10 | scope-bound single use | private: `holder_secret`; public: `scope` → output `nullifier` | `nullifier = Poseidon(holder_secret, scope)` — deliberately excludes `epoch`, §7 |
-
-*P9 (investment ceiling, `investmentAmount ≤ max(1000, net_worth × 0.05)`) is retired — removed from scope along with the `net_worth` attribute (§4.1) now that this project targets sophisticated/accredited investors only. P10 keeps its number; see PRD.md §3 for the same note.*
+| P9 | scope-bound single use | private: `holder_secret`; public: `scope` → output `nullifier` | `nullifier = Poseidon(holder_secret, scope)` — deliberately excludes `epoch`, §7 |
 
 ### 5.1 Public vs. Private Inputs (summary)
 
@@ -199,7 +197,7 @@ The mechanism specified here is *what* gets checked and recorded, and that it ha
 
 **Cross-scope linkage (L3):** explicitly not solvable by this construction — the same `holder_secret` across two different `scope`s produces unrelated nullifiers, so cumulative caps across scopes cannot be enforced without additional linkage. Stated in PRD §4.2 / PR-8 and repeated here since it's directly a nullifier-design consequence.
 
-**Re-issuance with a fresh secret (L13):** also not solvable by this construction, for a different reason. `holder_secret` is generated on-device and never reaches the issuer (PR-5), so nothing stops a holder from re-running Flow 1 (`specs/PRD.md` Flow 6) with a *new* secret, which produces an entirely new nullifier space for every scope — a self-service way around replay detection that doesn't depend on epoch at all. The issuer has no cryptographic way to detect or prevent this, since it can't observe `holder_secret` in the first place. PRD.md L13 documents this as a bounded operational gap (an issuer-side rate limit on re-issuance frequency per `holder_id`), not a cryptographic one.
+**Re-issuance with a fresh secret (L13):** closed by `secret_hash` — §4.3.1 has the mechanism.
 
 ---
 
