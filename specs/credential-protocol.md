@@ -151,7 +151,7 @@ Non-membership of `identity_commitment` is proven by:
 
 Adjacency is enforced by construction, not by a side condition: `nextValue` is part of the hashed leaf content the root commits to, so a holder cannot substitute a false gap — the actual next sanctioned value (or the upper sentinel) is exactly what `sanctionsRoot` attests to. This closes a gap a simpler design would leave open: exhibiting two independently-proven adjacent leaves (`low`, `high`) and trusting the issuer's insertion procedure to have kept them gapless would ask the circuit to trust an invariant it has no way to check itself — nothing would stop a holder from picking two *non-adjacent* members that happen to bracket `identity_commitment`, silently passing off a value that actually sits between them as absent. The embedded-pointer design closes that gap, and costs one Merkle proof per check instead of two.
 
-Chosen over a bitmap or flat-list scan because it stays constant-size regardless of sanctions-list size, matching the "allowlist/sanctions set sizes" complexity parameter (§3, PRD).
+Chosen over a bitmap or flat-list scan because it stays constant-size regardless of sanctions-list size, matching the "allowlist/sanctions set sizes" complexity parameter (TR-6, PRD).
 
 ### 5.4 Public Input Binding and Cross-Checking
 
