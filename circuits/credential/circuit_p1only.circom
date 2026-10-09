@@ -68,7 +68,7 @@ template CircuitP1Only(depth) {
     // condA = P1 v P2 (income >= 60000 OR portfolio_value > 100000,
     // credential-protocol.md §5). Regulatory constants are compile-time
     // literals, not inputs - a threshold change is a new circuit version
-    // (new schema_version, new trusted setup), the same tradeoff TR-5
+    // (new schema_version, new trusted setup), the same tradeoff TR-4
     // already accepts for any circuit change.
     component p1 = RangeGte(64);
     p1.value <== income;

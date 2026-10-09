@@ -5,7 +5,7 @@
 	<!--
 	F1.3: the app syncs measurement records to the collector service
 	running on the Mac (measurement/collector, plain HTTP, port 3003) over
-	the local network (TR-22). Merged into the auto-generated Info.plist
+	the local network. Merged into the auto-generated Info.plist
 	per GENERATE_INFOPLIST_FILE=YES + INFOPLIST_FILE in project.pbxproj -
 	see Apple's documentation on combining the two.
 	-->

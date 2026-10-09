@@ -20,6 +20,8 @@ Regulatory realism is a design goal, not a constraint. Where a rule is impractic
 
 ### 2.1 Spain — *accredited investor* (Law 5/2015, CNMV)
 
+Reference only: this MVP implements the EU regime (§2.2).
+
 Qualifies on **any one** of:
 
 | Criterion | Threshold |
@@ -50,7 +52,7 @@ Qualifies on **at least two of three** criteria in the full regulation. This MVP
 | P5 | jurisdiction ∈ allowed set | set membership | both |
 | P6 | subject ∉ sanctions set | set non-membership | both |
 | P7 | credential not expired | freshness | both |
-| P8 | credential not revoked | Merkle membership in current valid-set root | both |
+| P8 | credential not revoked | Merkle membership in current valid-set root (the root of the set of valid credentials) | both |
 | P9 | scope-bound single use | nullifier | both |
 
 ### 3.1 Credential & Tree Structure
@@ -103,7 +105,7 @@ What the entire system exists to demonstrate, told in three scenarios:
 
 **Credential** here means the 9 issuer-attested attribute values (income, portfolio, and the other financial-standing, jurisdiction, and identity facts the issuer attests) paired with the holder's `holder_secret` — nothing derived, nothing else. `attr_hash` and `leaf` are both computed *from* the credential's contents: `attr_hash` hashes the 9 attributes together, and `leaf` hashes that result together with the holder's secret. The Merkle path is different — it isn't derived from what's *in* the credential at all, it's proof that `leaf` is currently registered in the issuer's published tree, i.e. that the credential hasn't been revoked.
 
-1. The holder (Alice) initiates issuance with the issuer (Demo Bank) — customer identification handled out-of-band, simulated.
+1. The holder (Alice) initiates issuance with the issuer (Demo Bank) — customer identification handled out-of-band, simulated (the issuer's customer records are loaded manually, `specs/phase-3/verification-infrastructure.md §4.2`).
 2. Issuer looks up its own authoritative records for this holder and discloses the 9 attribute values — the issuer is the *source* of this data, not a checker of a holder's self-reported claims.
 3. Issuer computes the expected attribute hash (`attr_hash`) from those same records and sends it alongside.
 4. Holder now has both the attribute values and a holder-controlled secret that never leaves the device — the credential is assembled. Holder computes `attr_hash = Poseidon(9 attribute values)` — the same hash the issuer just computed in step 3, which should match — then computes the commitment `leaf = Poseidon(holder_secret, attr_hash)`, binding the credential to a secret only the holder knows. Holder generates a proof that `leaf` was genuinely built from this `attr_hash`, without revealing the secret (`credential-protocol.md §4.3`), and sends the issuer `leaf` and the proof.
@@ -149,7 +151,7 @@ When Alice's financial conditions change at Demo Bank, nothing happens on-chain 
    - If Demo Bank already revoked, Alice's old leaf is already gone — this submission is a plain fresh insertion, one more rotation, bringing the total for this whole episode to **two**.
    - If Demo Bank did not revoke, Alice still has a non-revoked leaf at submission time — this single call atomically revokes the old leaf and inserts the new one together, **one** rotation total for the whole episode, never a moment with zero valid leaves.
 
-If Alice cannot reproduce her original `holder_secret` (lost or replaced device), step 3 is blocked by design (`credential-protocol.md §4.3.1`) — Demo Bank must first perform a deliberate, audited reset clearing the stored binding before her next submission can succeed.
+If Alice cannot reproduce her original `holder_secret` (lost or replaced device), step 3 is blocked by design (`credential-protocol.md §4.3.1`) — there's no in-product recovery; Demo Bank would need to manually clear the stored binding directly in its database before her next submission could succeed.
 
 ---
 
@@ -157,49 +159,40 @@ If Alice cannot reproduce her original `holder_secret` (lost or replaced device)
 
 ### 7.1 Privacy
 
-- **PR-1** No attribute value SHALL leave the holder's device in any flow.
-- **PR-2** Proof generation SHALL occur entirely on-device, with no proving service.
-- **PR-3** A verifier SHALL learn only: eligible/not eligible, the scope-bound nullifier, and the public inputs required for verification.
-- **PR-4** A failed proof SHALL NOT disclose which predicate failed.
-- **PR-5** The holder secret SHALL be generated on-device and SHALL NOT be transmitted or recoverable by the issuer. (A one-way commitment to it, `secret_hash = Poseidon(holder_secret)`, MAY reach the issuer — `credential-protocol.md §4.3.1` — since `holder_secret` is a high-entropy random field element and Poseidon has no known inverse; this lets the issuer compare secrets across submissions without ever being able to recover one.)
+- **PR-1** No attribute value MUST be transmitted from the holder's device to the platform or any other party — the issuer, as the source of these facts, is the only party that legitimately holds them outside of the holder's device.
+- **PR-2** Proof generation MUST occur entirely on-device, with no external proving service.
+- **PR-3** A verifier MUST learn only: eligible/not eligible, the scope-bound nullifier, and the public inputs required for verification.
+- **PR-4** A failed proof MUST NOT disclose which predicate failed.
+- **PR-5** The holder secret MUST be generated on-device and MUST NOT be transmitted or recoverable by the issuer.
 
 ### 7.2 Unlinkability
 
-- **PR-6** Two presentations by the same holder in different scopes SHALL NOT be correlatable by the verifier or by a chain observer.
-- **PR-7** Nullifiers SHALL be scope-bound such that in-scope double use is detectable and cross-scope use is not.
-- **PR-8** The system SHALL document precisely which linkages remain possible.
-
+- **PR-6** Two presentations by the same holder in different scopes MUST NOT be correlatable by the verifier or by a chain observer.
+- **PR-7** Nullifiers MUST be scope-bound such that in-scope double use is rejected on-chain and cross-scope use is not.
 ### 7.3 Revocation
 
-- **PR-9** The issuer SHALL be able to revoke a credential without holder cooperation.
-- **PR-10** A revoked credential SHALL fail verification from the epoch following revocation.
-- **PR-11** Revocation SHALL NOT reveal which credential was revoked to verifiers or observers.
-- **PR-12** Revocation latency SHALL be bounded and documented.
-- **PR-24** An update to a holder's attribute values SHALL NOT, by itself, revoke, replace, or trigger re-issuance of an existing credential — each needs its own explicit trigger. Re-issuance's trigger atomically replaces any prior leaf as part of that same action, not a separate revocation.
+- **PR-8** The issuer MUST be able to revoke a credential without holder cooperation.
+- **PR-9** A revoked credential MUST fail verification from the epoch following revocation.
+- **PR-10** Revocation MUST NOT reveal which credential was revoked to verifiers or observers.
+- **PR-11** An update to a holder's attribute values MUST NOT, by itself, revoke, replace, or trigger re-issuance of an existing credential — each needs its own explicit trigger.
 
-### 7.4 Regulatory modelling
+### 7.4 Regulatory Scope
 
-- **PR-13** The system SHALL support the EU regime over a single credential — 2-of-2 in practice, not the full 2-of-3 originally scoped (condition (c) dropped).
-- **PR-14** — *Retired.* Enforced the investment-ceiling predicate relative to undisclosed net worth; removed along with it.
-- **PR-15** Deviations from actual regulation SHALL be documented.
-
+- **PR-12** The system MUST support the EU regime over a single credential — 2-of-2 in practice.
 ### 7.5 Holder experience
 
-- **PR-16** The holder SHALL be shown what will be proven and what will be revealed before consenting.
-- **PR-17** Proof generation SHOULD surface honest progress and real elapsed time — no artificial delay, no concealed latency. A UX-quality goal, not a binary pass/fail property the others are.
-- **PR-18** The holder SHOULD be able to inspect their credential's attributes, issuer, epoch and expiry locally. Same kind of goal — expected, not acceptance-blocking.
-- **PR-19** Failures (expired, revoked, ineligible) SHOULD be distinguishable to the *holder* for their own troubleshooting. (Non-disclosure to the *verifier* specifically is already a hard requirement, not restated here as a separate SHALL.)
+- **PR-13** Before consenting, the holder MUST be shown which predicates will be proven (e.g. "income is at least X") and which public values will be revealed to the verifier.
+- **PR-14** Proof generation SHOULD show the holder an estimate of total proving time, based on prior on-device measurement for that circuit configuration.
+- **PR-15** The holder SHOULD be able to inspect their credential's attributes, issuer, epoch and expiry locally.
+- **PR-16** The holder SHOULD be informed why a presentation failed — expired, revoked, or ineligible — for their own troubleshooting.
 
 ### 7.6 Verifier experience
 
-- **PR-20** The platform SHALL define per-offering eligibility policy (regime, jurisdictions).
-- **PR-21** The platform SHALL present a verification result traceable to an on-chain transaction.
-- **PR-22** The platform SHALL NOT be capable of storing attribute data, by construction.
-
+- **PR-17** The platform MUST define per-offering eligibility policy (jurisdictions).
+- **PR-18** The platform MUST present a verification result traceable to an on-chain transaction.
 ### 7.7 Issuance integrity
 
-- **PR-23** The issuer SHALL verify that a submitted credential commitment is bound to the specific attribute values the issuer verified, before inserting it, without the issuer learning the holder secret.
-- **PR-25** The issuer SHALL be able to reset a holder's `secret_hash` binding via a deliberate, audited action, so a lost or compromised `holder_secret` does not result in permanent exclusion from re-issuance.
+- **PR-19** The issuer MUST verify, using a zero-knowledge proof, that a submitted commitment is bound to the attribute values the issuer verified, before inserting it, without learning the holder secret.
 
 ---
 
@@ -207,85 +200,73 @@ If Alice cannot reproduce her original `holder_secret` (lost or replaced device)
 
 ### 8.1 Cryptographic
 
-- **TR-1** All circuits SHALL be authored in circom and proven with Groth16 over BN254.
-- **TR-2** Commitments and nullifiers SHALL use Poseidon.
-- **TR-3** — *Retired.* Called for issuer signatures via EdDSA over Baby Jubjub; this PoC relies on registry access control instead (root writes restricted to the issuer's on-chain address; leaf writes happen off-chain, under the issuer service's own control — L1) rather than an additional signature.
-- **TR-4** Set membership SHALL use Merkle inclusion proofs; set non-membership SHALL use a documented construction.
-- **TR-5** Circuit-specific trusted setup SHALL use a public Powers-of-Tau ceremony file; setup time and artifact size SHALL be recorded.
-- **TR-6** Circuits SHALL be parameterised over Merkle depth (16 → 20 → 32) and predicate count (P1 alone → full set) — the complexity-scaling axis proving cost is measured against, alongside allowlist/sanctions set sizes and regime (EU 2-of-2).
-- **TR-23** The issuer SHALL verify a zero-knowledge proof binding a submitted credential commitment to the issuer-verified attribute hash before insertion — a circuit reusing the same Poseidon/Groth16 primitives, not a new cryptographic construction.
+- **TR-1** All circuits MUST be authored in circom and proven with Groth16 over BN254.
+- **TR-2** Commitments, nullifiers, and Merkle/indexed-tree hashing MUST use Poseidon.
+- **TR-3** Set membership MUST use Merkle inclusion proofs, giving a constant on-chain footprint (one root), hidden member identity, and revocation by root rotation (`credential-protocol.md §6`). Set non-membership MUST use an indexed Merkle tree (sorted leaves with next-value pointers), giving constant-size proofs and an adjacency guarantee the prover cannot falsify (`credential-protocol.md §5.3`).
+- **TR-4** Circuit-specific trusted setup MUST use a public Powers-of-Tau ceremony file; setup time and artifact size MUST be recorded.
+- **TR-5** Circuits MUST be parameterised over Merkle depth (16, 20, 32) and predicate count (P1 alone up to the full set), so proving cost can be measured as complexity scales.
 
 ### 8.2 On-device proving
 
-- **TR-7** Proofs SHALL be generated natively on the iPhone 14 Pro; simulator measurements SHALL be rejected as invalid.
-- **TR-8** The app SHALL operate without network access during proof generation.
-- **TR-9** Proving assets SHALL be bundled or cached locally; asset size SHALL be measured and reported.
-- **TR-10** The app SHALL record proof time, peak memory, thermal state, and battery delta per run.
+- **TR-6** Proofs MUST be generated natively on a physical mobile device.
+- **TR-7** The app MUST generate proofs without any network access, with all inputs fetched beforehand.
+- **TR-8** The app MUST emit one structured record per measured run, containing the device, circuit configuration, proving-toolchain versions, and the run's metrics (proof time, peak memory, and thermal state and battery level at the start and end); the size of the proving assets MUST be reported.
 
 ### 8.3 On-chain verification
 
-- **TR-11** Verification SHALL occur on an EVM chain via a Groth16 verifier contract.
-- **TR-12** Registries SHALL maintain: valid-set root per epoch, sanctions root, the set of issuer-approved jurisdiction subset roots (`specs/phase-3/verification-infrastructure.md §3.1`, not a single root), and consumed nullifiers.
-- **TR-13** Nullifier replay within a scope SHALL be rejected on-chain.
-- **TR-14** Gas cost SHALL be measured per predicate configuration and projected across L1/L2 price points.
-- **TR-15** All chain interaction SHALL run against a local development chain.
-- **TR-24** The issuer service SHALL serialize every tree-mutating request through a single queue and publish each mutation on-chain before committing it to its local database, so a failed chain transaction never leaves the database ahead of the chain; on startup, the service SHALL reconcile its local valid-set root against `registry.validSetRootAt(registry.currentEpoch())` and refuse to serve on a mismatch — added as an addendum after a design review of the issuer service's chain/database consistency surfaced the gap; see `specs/phase-3/verification-infrastructure.md §4.4`.
+- **TR-9** Eligibility proofs MUST be verified on an EVM chain by a generated Groth16 verifier contract.
+- **TR-10** On-chain state MUST let the verifier check that a proof's roots and epoch are current and issuer-approved, and that its nullifier is unused; only the issuer can update the roots (`specs/phase-3/verification-infrastructure.md §3`).
+- **TR-11** On-chain gas cost MUST be measured for each circuit configuration and projected across L1 and L2 price points.
+- **TR-12** The issuer service's local database MUST NOT get ahead of on-chain state, even under failed chain calls or concurrent requests, and it MUST detect any divergence on startup and refuse to serve (`specs/phase-3/verification-infrastructure.md §4.4`).
 
-### 8.4 Measurement
+### 8.4 Constraints
 
-- **TR-16** Every measured run SHALL emit a structured record including device, circuit configuration, backend version, and all metrics.
-- **TR-17** The measurement schema SHALL be device-agnostic to permit later platform extension without rework.
-- **TR-18** Sustained-load runs SHALL enforce cooldown and record thermal transitions.
-- **TR-19** Results SHALL be reproducible from a clean checkout.
-
-### 8.5 Constraints
-
-- **TR-20** The system SHALL run entirely locally; no cloud service, hosted chain, or third-party API.
-- **TR-21** All development SHALL target macOS on the MacBook Air M3 as the sole build machine.
-- **TR-22** The system SHALL function with the iPhone and Mac on the same local network.
+- **TR-13** Results MUST be reproducible from a clean checkout.
+- **TR-14** The system MUST run entirely locally; no cloud service, hosted chain, or third-party API.
 
 ---
 
 ## 9. Technical Stack & Service Topology
 
-**Everything runs on the MacBook Air M3 except the holder app, which runs on the iPhone 14 Pro. The two communicate over the local network. Nothing is hosted externally.**
+**Everything runs on a local machine except the holder app, which runs on a mobile device. The two communicate over the local network. Nothing is hosted externally.**
 
 ### 9.1 Services
 
 | Service | Role | Host | Port |
 | --- | --- | --- | --- |
-| **Local chain** | EVM dev chain; hosts verifier + registries | MacBook | 8545 |
-| **Issuer service** | Credential issuance, Merkle tree custody, revocation, root publication | MacBook | 3001 |
-| **Platform backend** | Offering policy, presentation requests, proof intake, on-chain submission | MacBook | 3002 |
-| **Platform frontend** | Investor-facing offering UI, QR presentation, result display | MacBook | 5173 |
-| **Measurement collector** | Ingests structured measurement records synced from the device | MacBook | 3003 |
-| **Holder app** | Credential storage, on-device proving, consent UI, measurement | iPhone 14 Pro | — |
+| **Local chain** | EVM dev chain; hosts verifier + registries | local machine | 8545 |
+| **Issuer service** | Credential issuance, Merkle tree custody, revocation, sanctions and jurisdiction root maintenance, root publication | local machine | 3001 |
+| **Platform backend** | Offering policy, presentation requests, proof intake, on-chain submission | local machine | 3002 |
+| **Platform frontend** | Investor-facing offering UI, QR presentation, result display | local machine | 5173 |
+| **Measurement collector** | Ingests structured measurement records synced from the device | local machine | 3003 |
+| **Holder app** | Credential storage, on-device proving, consent UI, measurement | mobile device | — |
 
 ### 9.2 Stack per component
 
 **Circuits**
 
-- circom 2.x; circomlib (Poseidon, EdDSA, comparators, Merkle inclusion)
+- circom 2.x; circomlib (Poseidon, comparators, Merkle inclusion)
 - snarkjs for setup, desktop proving, verifier export
 
 **Smart contracts**
 
 - Solidity; Foundry for build/test/deploy
 - Anvil as the local chain
-- Contracts: `Groth16Verifier` (generated), `EligibilityRegistry` (epoch + set roots), `NullifierRegistry`, `OfferingPolicy`
+- Contracts: a generated Groth16 verifier, `EligibilityRegistry` (epoch + set roots), `NullifierRegistry`, `OfferingPolicy`
 
 **Issuer service**
 
 - Node.js + TypeScript, HTTP API
-- circomlibjs (Poseidon, EdDSA), incremental Merkle tree library
+- circomlibjs (Poseidon), incremental Merkle tree library
+- snarkjs (verifies leaf-binding proofs)
 - SQLite for credential and tree state
-- Holds the issuer keypair; publishes roots to the chain
+- Holds the issuer's on-chain account key; publishes roots to the chain
 
 **Platform backend**
 
 - Node.js + TypeScript, HTTP API
 - viem or ethers for chain interaction
-- Generates presentation requests (regime, scope, epoch, nonce); receives proofs; submits verification transactions
+- Generates presentation requests (scope, epoch, jurisdiction root); receives proofs; submits verification transactions
 
 **Platform frontend**
 
@@ -303,89 +284,81 @@ If Alice cannot reproduce her original `holder_secret` (lost or replaced device)
 
 **Measurement**
 
-- Structured records persisted on-device first, then synced to the measurement collector on the Mac — durable queue, not fire-and-forget, so a run survives the collector being briefly unreachable
-- Analysis scripts on the Mac producing summary tables
+- Structured records persisted on-device first, then synced to the measurement collector on the local machine — durable queue, not fire-and-forget, so a run survives the collector being briefly unreachable
+- Analysis scripts on the local machine producing summary tables
 
 ### 9.3 Transport bindings
 
-- **Issuance:** holder app → issuer service over local HTTP.
-- **Presentation request:** platform frontend → holder app via QR code.
-- **Proof delivery:** holder app → platform backend over local HTTP.
-- **Verification:** platform backend → local chain. *The platform submits the transaction, not the holder — this matches real RWA compliance flows and avoids requiring a funded account on the phone.*
-- **Measurement sync:** holder app / on-device harness → measurement collector over local HTTP. Records are written to durable on-device storage immediately after each run, then synced; the client retries until the collector acknowledges receipt, so no record is lost to a transient network or collector outage. Sync happens after proof generation completes, never during it.
+| Connection | Transport | Used for |
+| --- | --- | --- |
+| Holder app ↔ Issuer service | local HTTP | credential issuance, witness fetch (Flows 1, 2) |
+| Holder app → Platform backend | local HTTP | proof delivery (Flow 2) |
+| Platform frontend → Holder app | QR code | presentation request (Flow 2) |
+| Platform frontend ↔ Platform backend | local HTTP | creating presentation requests, showing results (Flow 2) |
+| Holder app → Measurement collector | local HTTP | measurement sync, after proof generation (§9.2) |
+| Issuer service → Local chain | local JSON-RPC | root publication, jurisdiction approvals (Flows 1, 4) |
+| Platform backend → Local chain | local JSON-RPC | offering registration, proof verification (Flow 2) |
+| Platform frontend → Local chain | local JSON-RPC (read) | verification results (Flow 2) |
+
+The platform submits the verification transaction, not the holder — this matches real RWA compliance flows.
 
 ### 9.4 Trust boundaries
 
-| Boundary | Crosses it | Never crosses it |
-| --- | --- | --- |
-| Issuer → Device | attribute values, expected attribute hash *(issuance only)* | — |
-| Device → Issuer | commitment, leaf-binding proof | holder secret, attribute values *(never re-disclosed, only consumed locally)* |
-| Issuer → Chain | published roots (`validSetRoot`, `sanctionsRoot`), jurisdiction root approvals | attribute values, holder secret, which holder any given leaf or nullifier corresponds to |
-| Device → Platform | proof, public inputs, nullifier | attribute values, holder secret, credential |
-| Platform → Chain | proof, public inputs | anything holder-identifying |
+What information crosses each boundary, and what never does, is specified in `credential-protocol.md §8.3`.
 
 ---
 
 ## 10. Phased Delivery
 
-Five phases, each ending in a demonstrable deliverable. Requirements only — sequencing within a phase is left open.
-
-### Phase 1 — Foundations & Feasibility — done
-
-**Objective:** prove the toolchain works end-to-end and establish measurement capability.
+### Phase 1 — Foundations & Feasibility
 
 **Requirements**
 
-- F1.1 A circom circuit SHALL prove on the iPhone 14 Pro natively. — done
-- F1.2 A generated verifier SHALL verify a real proof on the local chain, and reject a tampered one. — done
-- F1.3 The measurement harness SHALL emit structured records. — done
-- F1.4 Baseline costs SHALL be established for Poseidon, Merkle inclusion at three depths, range comparison, and EdDSA verification. — done
-- F1.5 A protocol specification SHALL define the credential schema, all predicates in circuit terms, the epoch and revocation model, the nullifier construction, and the threat model. — done
+- F1.1 A circom circuit MUST prove on the iPhone 14 Pro natively.
+- F1.2 A generated verifier MUST verify a real proof on the local chain, and reject a tampered one.
+- F1.3 The measurement pipeline MUST emit structured records.
+- F1.4 Baseline costs MUST be established for Poseidon, Merkle inclusion at three depths, range comparison, and EdDSA verification.
+- F1.5 A protocol specification MUST define the credential schema, all predicates in circuit terms, the epoch and revocation model, the nullifier construction, and the threat model.
 
-**Deliverable D0 — Feasibility Baseline:** working toolchain, on-device proof, on-chain verification, measurement harness, baseline primitive costs, protocol specification. — done
+**Deliverable:** working toolchain, on-device proof, on-chain verification, measurement pipeline, baseline primitive costs, protocol specification. — done
 
-**Acceptance:** a proof generated on the iPhone verifies on the local chain; the harness produces reproducible records; the specification is complete enough to implement against without further design decisions.
+**Acceptance:** the iPhone's proof verifies on the device, and a proof of the same circuit verifies against the generated verifier on the local chain, while a tampered one is rejected; the pipeline produces reproducible records; the specification is complete enough to implement against without further design decisions. — passed
 
 ---
 
-### Phase 2 — Credential & Eligibility Circuits — done
-
-**Objective:** implement the credential and the full predicate logic.
+### Phase 2 — Credential & Eligibility Circuits
 
 **Requirements**
 
-- F2.1 The credential SHALL bind all attributes to a holder secret via a Poseidon commitment. — done
-- F2.2 Circuits SHALL implement P1–P9. — done
-- F2.3 The EU 2-of-2 regime (condition (c) dropped) SHALL be satisfiable from a single credential. — done
-- F2.4 The threshold-of-N predicate (P4) SHALL be implemented as a first-class construct. — done
-- F2.5 — *Retired:* the investment-ceiling requirement no longer applies.
-- F2.6 Circuits SHALL be parameterised. — done
-- F2.7 A test suite SHALL demonstrate correct acceptance and rejection across eligible, ineligible, boundary, and malformed inputs. — done
-- F2.8 A leaf-binding proof SHALL let the issuer verify a submitted commitment is bound to the issuer-verified attribute hash, without learning the holder secret — added as an addendum after a design review surfaced the gap; see `credential-protocol.md §4.3`. — done
+- F2.1 The credential MUST bind all attributes to a holder secret via a Poseidon commitment.
+- F2.2 Circuits MUST implement P1–P9.
+- F2.3 The EU 2-of-2 regime (condition (c) dropped) MUST be satisfiable from a single credential.
+- F2.4 The threshold-of-N predicate (P4) MUST be implemented as a first-class construct.
+- F2.5 Circuits MUST be parameterised.
+- F2.6 A test suite MUST demonstrate correct acceptance and rejection across eligible, ineligible, boundary, and malformed inputs.
+- F2.7 A leaf-binding proof MUST let the issuer verify a submitted commitment is bound to the issuer-verified attribute hash, without learning the holder secret (`credential-protocol.md §4.3`).
 
-**Deliverable D1 — Eligibility Circuit Suite:** parameterised circuits covering the EU regime, with a correctness test suite and constraint counts across the complexity parameters. — done
+**Deliverable:** parameterised circuits covering the EU regime, with a correctness test suite and constraint counts across the complexity parameters. — done
 
-**Acceptance:** eligible holders produce valid proofs and ineligible ones cannot, under the EU regime; constraint counts are documented per configuration.
+**Acceptance:** eligible holders produce valid proofs and ineligible ones cannot, under the EU regime; constraint counts are documented per configuration. — passed
 
 ---
 
 ### Phase 3 — On-Chain Verification & Issuer Service
 
-**Objective:** stand up the infrastructure that makes proofs meaningful.
-
 **Requirements**
 
-- F3.1 Registry contracts SHALL maintain all roots and consumed nullifiers. — done
-- F3.2 Nullifier replay within a scope SHALL be rejected on-chain. — done
-- F3.3 The issuer service SHALL expose issuance and revocation over local HTTP, and SHALL publish roots to the chain; root publication SHALL be restricted to the issuer's on-chain address. Leaf insertion happens off-chain inside the issuer service; the chain only ever sees roots (`specs/phase-3/verification-infrastructure.md §4.1`).
-- F3.4 The issuer SHALL maintain the valid-set tree with epoch rotation.
-- F3.5 Revocation SHALL cause proof failure from the following epoch without holder cooperation.
-- F3.6 Per-offering eligibility policy SHALL be configurable on-chain, constrained to a `jurisdictionRoot` the issuer has actually approved (not one the platform invents — `specs/phase-3/verification-infrastructure.md §1`/§3.1), and each offering's access grant SHALL verify a submitted proof's `jurisdictionRoot` and `scope` public inputs match that offering's own registered values — cryptographic proof validity alone does not confirm a proof was generated for *this* offering (`credential-protocol.md §5.4`). — done
-- F3.7 Gas SHALL be measured across predicate configurations. — done
-- F3.8 A `secret_hash` binding SHALL let the issuer detect re-issuance with a different `holder_secret`, with a deliberate, audited reset path for a lost or compromised one — added as an addendum after a design review of the re-issuance path surfaced the gap; see `credential-protocol.md §4.3.1`.
-- F3.9 The issuer service SHALL keep its local database consistent with on-chain state under chain-call failure and concurrent requests — added as an addendum after a design review of the issuer service's mutation handling surfaced the gap; see `specs/phase-3/verification-infrastructure.md §4.4`.
+- F3.1 The on-chain registries MUST hold the issuer's current roots (the set of valid credentials, sanctions, approved jurisdiction sets) and every consumed nullifier, and MUST accept root updates only from the issuer. — done
+- F3.2 Nullifier replay within a scope MUST be rejected on-chain. — done
+- F3.3 The issuer service MUST be able to issue and revoke credentials, and MUST publish the resulting roots to the chain.
+- F3.4 The issuer MUST maintain the set of valid credentials with epoch rotation, the sanctions set, and the approved jurisdiction sets.
+- F3.5 Revocation MUST cause proof failure from the following epoch without holder cooperation.
+- F3.6 Per-offering eligibility policy MUST be configurable on-chain, limited to jurisdiction sets the issuer has approved, and an access grant MUST require the proof's jurisdiction set and scope to match the offering's registered values. — done
+- F3.7 Gas MUST be measured across predicate configurations. — done
+- F3.8 Re-issuance under a different holder secret MUST be detected by the issuer, without the issuer learning the secret.
+- F3.9 The issuer's records MUST never get ahead of on-chain state, even under failed chain calls or concurrent requests, and any divergence MUST be detected on startup.
 
-**Deliverable D2 — Verification Infrastructure:** deployed contracts, working issuer service, functioning epoch rotation and revocation, gas measurements.
+**Deliverable:** deployed contracts, working issuer service, functioning epoch rotation and revocation, gas measurements.
 
 **Acceptance:** an issued credential verifies on-chain; after revocation and epoch rotation the same credential fails; replayed nullifiers are rejected; gas is documented.
 
@@ -393,19 +366,16 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 
 ### Phase 4 — Holder App & End-to-End Demo
 
-**Objective:** the complete system, demonstrable to a non-technical observer.
-
 **Requirements**
 
-- F4.1 The holder app SHALL obtain and store credentials.
-- F4.2 The holder app SHALL generate eligibility proofs on-device.
-- F4.3 The app SHALL present consent showing what is proven and what is revealed, and SHOULD do so with honest progress.
-- F4.4 The platform frontend and backend SHALL implement the eligibility presentation flow end-to-end.
-- F4.5 All six user flows SHALL execute successfully.
-- F4.6 The three demo scenarios SHALL be demonstrable in a single session.
-- F4.7 Unlinkability SHALL be evidenced by showing no public value correlates two presentations.
+- F4.1 The holder app MUST be able to obtain and store credentials.
+- F4.2 The holder app MUST be able to generate eligibility proofs on-device.
+- F4.3 The app MUST present consent showing what is proven and what is revealed, and SHOULD show an estimate of proving time while the proof is generated.
+- F4.4 All six user flows MUST behave as specified.
+- F4.5 The three demo scenarios MUST be demonstrable in a single session.
+- F4.6 Unlinkability MUST be evidenced by showing no public value correlates two presentations.
 
-**Deliverable D3 — Working System:** iOS holder app, platform frontend and backend, all six flows operating, the three-scenario demo runnable end-to-end.
+**Deliverable:** iOS holder app, platform frontend and backend, all six flows operating, the three-scenario demo runnable end-to-end.
 
 **Acceptance:** an observer can watch Alice gain access privately, invest again unlinkably, and be refused after revocation — without the platform ever receiving an attribute value.
 
@@ -413,57 +383,36 @@ Five phases, each ending in a demonstrable deliverable. Requirements only — se
 
 ### Phase 5 — Measurement & Synthesis
 
-**Objective:** convert the working system into a defensible, publishable result.
-
 **Requirements**
 
-- F5.1 Proving cost SHALL be measured across the full set of complexity parameters.
-- F5.2 Sustained-load thermal and battery behaviour SHALL be characterised.
-- F5.3 UX acceptability bands SHALL be defined per interaction model and each configuration classified against them.
-- F5.4 On-chain cost SHALL be projected across L1/L2 price points.
-- F5.5 The architecture, its design rationale, and its trade-offs SHALL be documented.
-- F5.6 Unresolved tensions SHALL be stated explicitly, including what the design cannot enforce.
-- F5.7 All limitations SHALL be stated plainly.
-- F5.8 Results SHALL be reproducible from a clean checkout.
+- F5.1 Proving cost MUST be measured across the full set of complexity parameters.
+- F5.2 Sustained-load thermal and battery behaviour MUST be characterised.
+- F5.3 UX acceptability bands for proving time MUST be defined, and each circuit configuration classified against them.
+- F5.4 On-chain cost MUST be projected across L1/L2 price points.
+- F5.5 A synthesis report MUST document the architecture, its design rationale and trade-offs, and state the design's limitations and unresolved tensions plainly, including what it cannot enforce.
 
-**Deliverable D4 — Synthesis Report:** complete measurements, UX classification, architecture write-up, honest limitations, reproducible artifacts.
+**Deliverable:** a synthesis report covering complete measurements, UX classification, the architecture write-up and limitations, plus the reproducible artifacts behind it.
 
-**Acceptance:** the report answers the research question with evidence, and every claim survives specific technical challenge.
-
----
-
-### Summary
-
-| Phase | Deliverable | Status |
-| --- | --- | --- |
-| 1 | D0 — Feasibility Baseline | done |
-| 2 | D1 — Eligibility Circuit Suite | done |
-| 3 | D2 — Verification Infrastructure | |
-| 4 | D3 — Working System | |
-| 5 | D4 — Synthesis Report | |
+**Acceptance:** the report answers, with evidence, whether such a credential can be proven on consumer hardware and verified on-chain, and at what cost as complexity scales; every claim survives specific technical challenge.
 
 ---
 
 ## 11. Known Limitations
 
-To be stated plainly in all output.
+- **L1 — Issuer trust is out of scope.** A single operator runs both issuer and holder.
+- **L2 — Regulatory modelling is a simplified model of the criteria**, not legal compliance.
+- **L3 — Root authenticity rests on registry access control alone; leaf authenticity rests on the issuer service.** The `EligibilityRegistry` accepts roots only from the issuer's on-chain address, and the chain never sees individual leaves. Both are sufficient under L1's single-operator trust model; a multi-operator deployment would need an independent check, such as a signed root.
+- **L4 — Credential expiry (P7) counts events, not elapsed time.** The epoch advances on every issuance and revocation, with no timer, so a credential's lifetime depends on system activity, not on the calendar. Real-time expiry would need a timestamp or a timer.
+- **L5 — Re-issuance requires the original holder secret, and a lost or compromised secret has no in-product recovery.** The issuer enforces that a holder reuses the same secret, without ever learning it, so a lost or replaced phone cannot re-issue and recovery is a manual operator step. The PoC also assumes one device, and therefore one secret, per person; several accounts or devices per person are out of scope. One grant per offering holds per credential; one credential per person relies on the issuer.
+- **L6 — Recovery from a crash mid-update is manual.** If the issuer service crashes after a root is confirmed on-chain but before its own records are updated, the records fall behind the chain, which is the safe direction because proofs are checked against the chain. The service detects the mismatch on startup, and an operator resolves it by hand.
+- **L7 — A granted proof isn't bound to any recipient address.** The proof commits to what is proven (jurisdiction, sanctions, validity, epoch, offering) but not to an investor account, so it cannot yet drive a token-compliance flow (ERC-3643 style, §12) that needs eligibility tied to an address. Binding it means adding the recipient to the proof, which requires a circuit change and a new trusted setup.
+- **L8 — Jurisdiction approvals and sanctions entries can only be added, never withdrawn.** An offering therefore keeps working against its approved jurisdiction set even if one of those jurisdictions is later restricted.
+- **L9 — Not quantum-safe; a migration path exists but is not built.** A large quantum computer breaks Groth16/BN254, so an attacker could forge valid proofs. It also breaks the issuer's ECDSA account, so an attacker could publish roots. Poseidon holds up. Privacy is preserved: Groth16 proofs are perfectly zero-knowledge, so past proofs stay private, even against a future quantum attacker. The risk is forgery from that point on, so migrating before such a machine exists is enough. The verifier, the issuer address and the nullifier registry's authorized caller are all fixed at deploy time, so migration means a fresh deployment, in three steps:
+  1. Move all circuits to a hash-based proving backend.
+  2. Create a new issuer account with post-quantum signatures, through Ethereum's account abstraction.
+  3. Redeploy `EligibilityRegistry`, `NullifierRegistry` and `OfferingPolicy`, seeded from the issuer database and the old chain: valid-set, sanctions and jurisdiction roots, registered offerings, consumed nullifiers and the current epoch. The epoch must carry over, or P7 expiries shift. Consumed nullifiers must carry over, or a holder could use the same offering twice.
 
-- **L1 — Issuer trust is out of scope.** A single operator runs both issuer and holder. The hardest real-world problem — why anyone should trust the issuer's attestation — is not addressed. The contribution is cryptographic and architectural, not trust bootstrapping.
-- **L2 — Revocation has a bounded exposure window** by construction (§4.1).
-- **L3 — Cross-scope cumulative caps cannot be enforced** without linkage (§4.2).
-- **L4 — Regulatory modelling is a good-faith approximation**, not legal compliance.
-- **L5 — Single device, single library.** Results characterise circom/Groth16 on an A16-class device. No claim is made about other stacks or hardware.
-- **L6 — Not production-hardened.** No security audit, no key management discipline, no adversarial testing.
-- **L7 — EU regime is 2-of-2, not 2-of-3.** Condition (c) (market activity) was dropped as the most expensive sub-condition — it was never implemented, so it has no P-number in §3's table. The threshold predicate is built as a generic M-of-N construct (F2.4), so this is a configuration limit rather than an architectural one — but the MVP result characterises 2-of-2, not the full regulation.
-- **L8 — Spanish regime not implemented.** Retained in §2.1 as regulatory reference only. Its unique predicate, advisory-contract membership, is consequently out of scope too — it was never implemented either, so it likewise has no P-number.
-- **L9 — Merkle trees have fixed capacity, set by depth at deploy time.** Every tree in this system (valid-set, jurisdiction, sanctions) holds at most `2^depth` leaves; exceeding it means a full rebuild at greater depth, not an incremental add. This is cheaper to absorb than it sounds — F1.4's baseline shows constraint cost scales linearly with depth while capacity scales exponentially (depth 32 costs ~2× depth 16's constraints for 65,536× the capacity), so depth 20 alone (Phase 2's default) already covers over a million entries at already-measured cost. The actual open question is operational, not cryptographic: no validated estimate exists for real-world sanctions/jurisdiction list sizes against that ceiling, and a rebuild event (new root, all cached low-leaf lookups invalidated) has no defined procedure yet.
-- **L10 — Root authenticity rests entirely on registry access control, not a signature; leaf authenticity rests on the issuer service instead.** TR-3 originally called for the issuer to sign published roots with EdDSA; this PoC retires that and relies solely on the `EligibilityRegistry` contract restricting root publication to the issuer's on-chain address. Leaf authenticity has no on-chain mechanism at all — the chain never sees individual leaves, so it rests entirely on the issuer service being operated honestly (L1). This is sufficient under L1's trust model (a single operator runs both issuer and holder, and issuer honesty is already assumed) but means authenticity depends entirely on that one contract's access-control logic being correct, for roots, and on the issuer service's own integrity, for leaves — there is no independent, contract-logic-free way to verify a root came from the issuer, the way a signature would provide. A real multi-operator deployment would need to reconsider this.
-- **L11 — `currentEpoch` is an event counter, not a clock, so P7 (expiry) measures events, not elapsed time.** `EligibilityRegistry.currentEpoch` increments on every valid-set root change — both issuance and revocation (`specs/phase-3/verification-infrastructure.md §1`) — with no fixed timer. P7's `expiry_epoch ≥ currentEpoch` check is therefore satisfied or violated by however many issuances and revocations happen to occur, not by how much real time passes: a credential could "expire" after a handful of unrelated events in a busy system, or never in a quiet one. This is a deliberate PoC simplification, not an oversight — decoupling expiry from a real timestamp (cross-checked against `block.timestamp` via the same recorded-value mechanism §5.4 already uses) or adding timer-based rotation alongside revocation would both work, but neither is implemented; P7 should be read as "expiry is event-count-based" rather than a real time bound until one of those is built.
-- **L12 — Whether an attribute edit warrants revocation is an issuer policy decision, not something the system automates.** Flow 6 keeps the edit and its issuer-initiated revocation independent and explicitly-triggered; re-issuance is separate again and atomically replaces the holder's prior leaf when triggered. Nothing evaluates an edit and decides for the issuer whether it should trigger a revoke. A real deployment would need its own operational rules for that judgement (e.g. "any income or employment change re-triggers a compliance review") — this PoC leaves the decision entirely to the issuer operator, the same way L1 leaves issuer honesty itself unverified.
-- **L13 — Re-issuance requires reusing the original `holder_secret`, enforced cryptographically; recovering from a lost or compromised secret requires a deliberate issuer reset.** `leaf_binding.circom`'s `secret_hash` binding (`credential-protocol.md §4.3.1`) makes reusing the same `holder_secret` something the issuer can verify without ever learning it — a holder can no longer silently reset their own nullifier space by re-issuing with a fresh one. But `holder_secret` lives only on the holder's device, so a lost or replaced phone means it can never be reproduced again, and a compromised secret can never be rotated — without a way out, either failure mode would be permanent exclusion, unacceptable as a product. The system therefore needs an issuer-controlled reset (PR-25): clearing the stored `secret_hash` binding after a manual, audited step, which does reopen a fresh nullifier space for that holder — but only through deliberate issuer intervention, not silently or self-service. The residual limitation is exactly that reset path: it's an operational control, not a cryptographic one, and nothing here bounds how often an issuer could invoke it — the same kind of issuer-side rate-limiting L12 already leaves as an operator responsibility applies here too. This PoC also assumes one device, and therefore one `holder_secret`, per person — the `secret_hash` check is keyed on `holder_id` accordingly. A person legitimately holding multiple accounts or devices at this issuer is out of scope.
-- **L14 — A crash between a confirmed chain transaction and its follow-up database write requires manual reconciliation; nothing replays it automatically.** `specs/phase-3/verification-infrastructure.md §4.4`'s chain-first ordering means the only way the issuer's local database can diverge from the chain is falling *behind* it, in that narrow window — the safe direction, since the chain (what `presentEligibility` actually checks) is already correct. Startup reconciliation detects this by comparing the local valid-set root against `registry.validSetRootAt(registry.currentEpoch())`, but detection is as far as this PoC goes: closing the gap is a manual operator step, not an automated replay of the missed write. A write-ahead log of pending mutations, replayed idempotently on startup, would close this properly in a real deployment.
-- **L15 — A granted proof isn't bound to any specific recipient address.** `presentEligibility`'s public signals commit to what's being proven — jurisdiction, sanctions non-membership, valid-set membership, current epoch, offering scope — never to an investor account. The presentation request's `nonce` (§9.1) isn't carried by any circuit input either, so it doesn't provide that binding. This is a real gap against a real RWA integration (ERC-3643-style, §12), which needs eligibility tied to a specific address, not just this PoC's model of a grant as a fact about a nullifier. Closing it needs a new public input (a bound recipient address, checked in-circuit) — a circuit change requiring a new trusted-setup ceremony, the same cost already paid once this phase for the nullifier fix (`credential-protocol.md §7`).
-- **L16 — Jurisdiction approvals, recognized codes, and sanctions entries are add-only; none can be withdrawn.** `EligibilityRegistry.approveJurisdictionRoot` only ever sets an entry to approved, `/jurisdictions/add` only ever grows the recognized-codes table, and `/sanctions/add` only ever inserts — there is no `unapprove`, no code removal, no delisting anywhere in this PoC. An offering therefore keeps working against a jurisdiction root forever, even if one of that root's jurisdictions is later restricted. This is more than a missing feature: `specs/phase-3/verification-infrastructure.md §3.3` justifies skipping a repeated approval check at presentation time specifically *because* `o.jurisdictionRoot` "can't change after registration" — a property that only holds while approval stays permanent. Adding an `unapprove` function later without revisiting that check would silently reintroduce exactly the stale-approval bug the check was written to avoid.
+  If the new backend keeps BN254 and circomlib's Poseidon, existing trees and leaves stay valid. Otherwise, every holder must re-bind, because only the holder knows `holder_secret`.
 
 ---
 
@@ -471,23 +420,19 @@ To be stated plainly in all output.
 
 **Excluded from the MVP:**
 
-- Additional proving libraries. *Post-MVP option.*
-- Android or any second device.
+- Additional proving libraries, and Android or any second device.
 - Legacy credential formats (passports, national eID, RSA/ECDSA-P256 issuance).
-- Confidential amounts or encrypted balances.
 - GPU/Metal proving acceleration.
-- Recursion or proof aggregation.
 - Public testnet or mainnet deployment.
 - Real KYC, real issuer integration, production security.
-- Protections for non-sophisticated retail investors (e.g. investment ceilings). The MVP targets accredited/sophisticated investors only, which both regimes in §2 already gate on.
+- Protections for non-sophisticated retail investors (e.g. investment ceilings). The MVP targets sophisticated investors only, as the EU regime in §2.2 requires.
 
-**Post-MVP extensions**, in rough order of value:
+**Post-MVP extensions:**
 
-1. A second proving library, once circom is established end-to-end.
-2. ERC-3643 / ERC-7943 integration — plugging the proof into a standard compliance-before-transfer flow.
-3. Cryptographic accumulators for constant-time revocation without epoch latency.
-4. Cross-scope cap enforcement without linkage — the unsolved half of §4.2.
+1. A second proving library, once circom is established end-to-end. The preferred candidate is a hash-based, post-quantum library with mobile support, for example World's ProveKit (Noir → Spartan + WHIR, BN254, no trusted setup). Benchmark it against the Groth16 results on the same predicates and device. This is also the first step of L9's migration. On-chain, ProveKit currently needs a Groth16 wrapper, so the quantum gap stays open until that wrapper is removed.
+2. ERC-3643 / ERC-7943 integration — plugging the proof into a standard compliance-before-transfer flow. Requires proofs bound to a recipient address (L7).
+3. Lower-cost revocation: let holders update their membership proof locally instead of re-fetching a path on every root change (for example with accumulator-based schemes).
+4. Cumulative per-investor limits across offerings without linkage — the unsolved half of §4.2.
 5. Android and cross-device measurement.
-6. Delegated attestation from real financial institutions.
-7. Reinstate EU condition (c) (P5) and/or the Spanish regime (P3), if Phase 2 constraint counts show headroom — the M-of-N construct (F2.4) is built to make this a configuration change, not a redesign.
-8. Reinstate TR-3's issuer EdDSA signature over published roots (retired for the MVP — L10), giving root authenticity an independently-verifiable guarantee beyond the registry contract's own access control — relevant once more than one party needs to trust the same infrastructure. `circuits/eddsa-baseline`'s Phase 1 measurement already covers the cost.
+6. Multiple real issuers: accept attestations from several institutions, each publishing its own roots, with each platform choosing which issuers it trusts.
+7. An issuer signature over published roots, so root authenticity no longer rests on registry access control alone (L3). `circuits/eddsa-baseline` already measures its cost; a post-quantum signature is part of L9's migration.

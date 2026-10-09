@@ -5,7 +5,7 @@ const { buildFixtures } = require("./fixtures");
 
 const CREDENTIAL_DIR = path.join(__dirname, "..");
 
-// Phase 2 addendum (F2.8): closes the gap where the issuer recomputing
+// Phase 2 addendum (F2.7): closes the gap where the issuer recomputing
 // attr_hash alone doesn't confirm the submitted leaf was built from it -
 // credential-protocol.md §4.3.
 describe("leaf_binding.circom", function () {

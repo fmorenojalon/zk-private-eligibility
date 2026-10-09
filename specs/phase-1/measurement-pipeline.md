@@ -1,6 +1,6 @@
-# Phase 1 — Measurement Harness Specification
+# Phase 1 — Measurement Pipeline Specification
 
-**Satisfies:** F1.3, TR-16 through TR-19
+**Satisfies:** F1.3, TR-8 and TR-13
 **Status: satisfied.** Collector, on-device emission, and analysis script are all implemented and confirmed end-to-end on the physical iPhone 14 Pro — see [measurement/README.md](../../measurement/README.md) for reproduction steps and real collected data. Two design points changed from this draft during implementation, both noted inline below: `analyze.py` ended up stdlib-only (§5), and the durability design (§3) got real validation, not just a description — see the note there.
 
 ---
@@ -13,7 +13,7 @@ Every measured run — baseline primitive today, full credential circuit from Ph
 
 ## 2. Structured Record Schema
 
-One JSON object per run. Device-agnostic by design (TR-17): the `device` object's shape stays generic so a later platform (Android, out of scope for MVP but not architecturally precluded) needs no schema rework.
+One JSON object per run. Device-agnostic by design: the `device` object's shape stays generic so a later platform (Android, out of scope for MVP but not architecturally precluded) needs no schema rework.
 
 ```json
 {
@@ -59,10 +59,10 @@ One JSON object per run. Device-agnostic by design (TR-17): the `device` object'
 
 Field notes:
 
-- `device.is_simulator` **must** be `false` for a record to count toward F1.1/F1.4 acceptance (TR-7). Simulator-origin records are still stored (useful for early development sanity checks) but tagged and excluded from analysis by default.
+- `device.is_simulator` **must** be `false` for a record to count toward F1.1/F1.4 acceptance (TR-6). Simulator-origin records are still stored (useful for early development sanity checks) but tagged and excluded from analysis by default.
 - `circuit.parameters` is an open object — shape varies by circuit (`{"arity": N}` for Poseidon, `{"depth": N}` for Merkle, `{"predicate_count": N}` from Phase 2 onward).
 - `thermal_state_*` uses iOS `ProcessInfo.thermalState` values: `nominal`, `fair`, `serious`, `critical`.
-- `run_context.network_disabled_during_proving` records whether TR-8 held for this specific run — an explicit assertion, not an assumption.
+- `run_context.network_disabled_during_proving` records whether TR-7 held for this specific run — an explicit assertion, not an assumption.
 
 ---
 
@@ -78,35 +78,35 @@ This durability requirement exists specifically so that a multi-hour measurement
 
 ## 4. Emission & Export Path
 
-- **On-device:** the Phase 1 iOS proving harness ([toolchain-baseline.md §6](toolchain-baseline.md#6-ios-native-proving-integration-layer-f11)) writes each record to local NDJSON storage per §3, then attempts sync.
+- **On-device:** the Phase 1 iOS baseline app ([toolchain-baseline.md §6](toolchain-baseline.md#6-ios-native-proving-integration-layer-f11)) writes each record to local NDJSON storage per §3, then attempts sync.
 - **Collector service:** a new lightweight HTTP service, `measurement/collector`, on the Mac at port `3003` (added to PRD §9.1). Exposes a single ingest endpoint that accepts a batch of NDJSON records, deduplicates by `record_id`, and appends new ones to `measurement/records/`.
-- **Sync timing:** only after proof generation completes — never during proving (TR-8). The device may re-enable network specifically to sync, then proceed with the next run.
+- **Sync timing:** only after proof generation completes — never during proving (TR-7). The device may re-enable network specifically to sync, then proceed with the next run.
 - **Idempotency:** because sync can retry, the collector must treat re-delivery of an already-seen `record_id` as a no-op, not a duplicate entry.
 
 ---
 
 ## 5. Analysis Scripts
 
-`measurement/analyze` — Python, stdlib only (`json`, `statistics`) rather than pandas as originally drafted here: at this data volume (dozens to low hundreds of records per phase, not the large-N territory pandas is built for) a hard dependency bought nothing but install friction against TR-19's clean-checkout bar. Revisit if Phase 5's full complexity-parameter sweep turns out to need real dataframe operations or plotting.
+`measurement/analyze` — Python, stdlib only (`json`, `statistics`) rather than pandas as originally drafted here: at this data volume (dozens to low hundreds of records per phase, not the large-N territory pandas is built for) a hard dependency bought nothing but install friction against TR-13's clean-checkout bar. Revisit if Phase 5's full complexity-parameter sweep turns out to need real dataframe operations or plotting.
 
 Ingests all records in `measurement/records/`, groups by `(circuit.name, circuit.parameters)`, and computes mean/median/p95/stddev per metric, plus device/backend version breakdowns. Output: Markdown and CSV summary tables under `measurement/reports/`.
 
 ---
 
-## 6. Reproducibility (TR-19)
+## 6. Reproducibility (TR-13)
 
 - Every record self-describes its full toolchain version set (`backend` object) — no external "what version were we on" lookup needed to interpret historical data.
 - Raw NDJSON records and analysis scripts are checked into the repo (`measurement/records/`, `measurement/analyze/`) — plain text, small, no reason to `.gitignore`.
-- A `measurement/README.md` (written during Phase 1 implementation, not part of this spec) documents the exact steps to reproduce a clean run from checkout: build circuits, run setup, deploy collector, run the iOS harness, run analysis.
+- A `measurement/README.md` (written during Phase 1 implementation, not part of this spec) documents the exact steps to reproduce a clean run from checkout: build circuits, run setup, deploy collector, run the iOS baseline app, run analysis.
 
 ---
 
-## 7. Thermal & Cooldown Handling (TR-18)
+## 7. Thermal & Cooldown Handling
 
-Phase 1 does not perform sustained-load characterization itself (that's Phase 5, F5.2), but the harness must be built to support it from the start:
+Phase 1 does not perform sustained-load characterization itself (that's Phase 5, F5.2), but the pipeline must be built to support it from the start:
 
 - Each record captures `thermal_state` at both the start and end of the run, so a transition (e.g. `nominal` → `fair`) during a single proof is visible.
-- The harness supports running `N` back-to-back proofs with a configurable cooldown between them (`run_context.cooldown_seconds_before`), so Phase 5 can characterize thermal behavior under sustained load without harness changes — only a configuration change.
+- The pipeline supports running `N` back-to-back proofs with a configurable cooldown between them (`run_context.cooldown_seconds_before`), so Phase 5 can characterize thermal behavior under sustained load without pipeline changes — only a configuration change.
 
 ---
 
@@ -114,8 +114,6 @@ Phase 1 does not perform sustained-load characterization itself (that's Phase 5,
 
 | Requirement | Satisfied by |
 | --- | --- |
-| TR-16 (structured record, all metrics) | §2 |
-| TR-17 (device-agnostic schema) | §2 (`device` object design) |
-| TR-18 (cooldown + thermal transitions) | §7 |
-| TR-19 (reproducibility) | §6 |
+| TR-8 (structured record, all metrics) | §2 |
+| TR-13 (reproducibility) | §6 |
 | F1.3 | §2–§7 combined |

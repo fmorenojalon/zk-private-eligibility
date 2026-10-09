@@ -129,7 +129,7 @@ cast call $VERIFIER \
 # -> false
 ```
 
-That's the whole verification flow: a proof generated on the iPhone, converted to Solidity calldata, checked by a contract whose logic came directly from the circuit's proving key, running on a real (if ephemeral) EVM.
+That's the whole verification flow: a proof of the baseline circuit (the committed `snarkjs` fixture, which is the same circuit the iPhone proves), converted to Solidity calldata, checked by a contract whose logic came directly from the circuit's proving key, running on a real (if ephemeral) EVM.
 
 **Note:** Groth16 proofs are randomized (blinding factors baked into each proof for zero-knowledge), so *regenerating* a proof for the same input would produce different `pA`/`pB`/`pC` values than the ones above, even though the public output stays the same. The values here are specifically the ones in the committed `circuits/poseidon-baseline/proof.json` fixture — they'll keep working as long as that file isn't regenerated.
 
@@ -141,7 +141,7 @@ Full design rationale for all of these lives in [`specs/phase-3/verification-inf
 
 ### `EligibilityRegistry.sol`
 
-Holds the issuer-controlled facts every offering shares: the valid-set root per epoch, the sanctions root, and the set of jurisdiction roots the issuer has approved. Everything is gated to one `issuer` address — no signature, access control is the whole security boundary (L10).
+Holds the issuer-controlled facts every offering shares: the valid-set root per epoch, the sanctions root, and the set of jurisdiction roots the issuer has approved. Everything is gated to one `issuer` address — no signature, access control is the whole security boundary (L3).
 
 ```solidity
 function publishValidSetRoot(bytes32 newRoot) external;      // onlyIssuer - increments currentEpoch
@@ -152,7 +152,7 @@ function approveJurisdictionRoot(bytes32 root) external;     // onlyIssuer - add
 
 ### `NullifierRegistry.sol`
 
-A flat set of consumed nullifiers — the on-chain replay guard (TR-13/PR-7). Once a given nullifier value has been recorded here, presenting the same proof again is rejected: `consumeIfUnused` reverts on anything already marked used.
+A flat set of consumed nullifiers — the on-chain replay guard (PR-7). Once a given nullifier value has been recorded here, presenting the same proof again is rejected: `consumeIfUnused` reverts on anything already marked used.
 
 The reason it isn't simply "call `consumeIfUnused` whenever you want" is front-running: a nullifier is a public value, visible in the calldata of anyone's pending presentation transaction. If any address could call `consumeIfUnused` directly, an attacker watching the mempool could read a legitimate holder's nullifier out of their about-to-be-mined transaction and submit it first — the holder's real presentation would then revert on "already used," even though they never actually got access. So this contract only ever accepts calls from one specific address, set up like this:
 
@@ -295,7 +295,7 @@ cast send $POLICY \
 # status: 1 (success) - emits NullifierConsumed and EligibilityGranted(offeringId=0, nullifier=...)
 ```
 
-**Replay the identical call** — confirms TR-13/PR-7 end-to-end, not just at the `NullifierRegistry` unit level:
+**Replay the identical call** — confirms PR-7 end-to-end, not just at the `NullifierRegistry` unit level:
 
 ```sh
 cast send $POLICY "presentEligibility(...)" 0 ... --rpc-url $RPC --private-key $PLATFORM_KEY

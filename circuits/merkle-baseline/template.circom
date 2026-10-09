@@ -4,7 +4,7 @@ include "../node_modules/circomlib/circuits/poseidon.circom";
 include "../node_modules/circomlib/circuits/comparators.circom";
 
 // Phase 1 baseline primitive (F1.4). Binary Merkle inclusion proof,
-// parameterized by depth per TR-6. Reused directly for P5/P6/P8 in
+// parameterized by depth per TR-5. Reused directly for P5/P6/P8 in
 // Phase 2 (jurisdiction/sanctions/valid-set membership,
 // specs/phase-1/protocol-spec.md §5).
 //

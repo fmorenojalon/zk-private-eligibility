@@ -13,7 +13,7 @@ Prove the full toolchain works end-to-end on real hardware, and establish baseli
 
 ## 2. Pinned Toolchain Versions
 
-Recorded here for reproducibility (TR-19); every measurement record also carries these versions per-run (see [measurement-harness.md](measurement-harness.md)).
+Recorded here for reproducibility (TR-13); every measurement record also carries these versions per-run (see [measurement-pipeline.md](measurement-pipeline.md)).
 
 | Tool | Version | Source |
 | --- | --- | --- |
@@ -42,15 +42,15 @@ zk-private-eligibility/
 ├── issuer-service/          Node/TS HTTP API (Phase 3)
 ├── platform-backend/        Node/TS HTTP API (Phase 3/4)
 ├── platform-frontend/       React + Vite (Phase 4)
-├── holder-app-ios/          SwiftUI app — Phase 1 gets a minimal proving harness here; the full holder app (credential storage, consent UI, QR) is Phase 4
+├── holder-app-ios/          SwiftUI app — Phase 1 gets a minimal baseline app here; the full holder app (credential storage, consent UI, QR) is Phase 4
 └── measurement/             collector service, on-device record schema, analysis scripts
 ```
 
-Phase 1 touches `circuits/`, `contracts/` (verifier + test harness only), `holder-app-ios/` (minimal harness), and `measurement/`.
+Phase 1 touches `circuits/`, `contracts/` (verifier + Foundry tests only), `holder-app-ios/` (minimal baseline app), and `measurement/`.
 
 ---
 
-## 4. Trusted Setup (TR-5)
+## 4. Trusted Setup (TR-4)
 
 **Source:** Hermez/Polygon zkEVM perpetual Powers-of-Tau ceremony.
 
@@ -68,27 +68,27 @@ Four standalone circuits, no credential logic — pure primitive measurement:
 | Circuit | Parameters tested | Purpose |
 | --- | --- | --- |
 | `poseidon-baseline` | arity 2, arity 10 | matched the two Poseidon arities used in the credential commitment at the time ([credential-protocol.md §4.2](../credential-protocol.md#42-commitment-structure)); `attr_hash`'s arity later dropped to 9 when the investment-ceiling predicate was retired, so arity 10 is now the closest reference point rather than an exact match — see that section for detail |
-| `merkle-baseline` | depth ∈ {16, 20, 32} | matches TR-6's complexity parameters; reused directly for P5/P6/P8 in Phase 2 |
+| `merkle-baseline` | depth ∈ {16, 20, 32} | matches TR-5's complexity parameters; reused directly for P5/P6/P8 in Phase 2 |
 | `range-baseline` | single comparator over a 64-bit value | matches the income/portfolio field sizes used in P1/P2 |
 | `eddsa-baseline` | single EdDSA-Poseidon signature verification | standalone reference number per F1.4 — **not** used in the Phase 2 credential circuit per [credential-protocol.md §3](../credential-protocol.md#3-issuer-attestation-membership-only-design-decision), but still required baseline data |
 
 **Per circuit, per parameter set, recorded:**
 - Constraint count (`circom --r1cs`)
 - Witness generation time (desktop)
-- Proving time — desktop **and** iPhone 14 Pro native (TR-7: simulator runs are invalid and excluded)
+- Proving time — desktop **and** iPhone 14 Pro native (TR-6: simulator runs are invalid and excluded)
 - Verification time (desktop, snarkjs)
 - Proof size
 - Trusted setup artifact size (ptau + zkey)
 
-All values go through the measurement harness ([measurement-harness.md](measurement-harness.md)) as structured records, not ad-hoc notes.
+All values go through the measurement pipeline ([measurement-pipeline.md](measurement-pipeline.md)) as structured records, not ad-hoc notes.
 
-**Status: satisfied (desktop for all four; on-device for one).** All four circuits are built, set up, and proven/verified across their full parameter sets — full results, methodology, and reproduction steps in [circuits/BASELINE_RESULTS.md](../../circuits/BASELINE_RESULTS.md). `poseidon-baseline` additionally has real, repeated, device-tagged records via F1.3's now-implemented harness — the other three circuits haven't been wired through mopro on-device yet, so their desktop numbers are still the only data point. Re-baselining the remaining three on real hardware is expected.
+**Status: satisfied (desktop for all four; on-device for one).** All four circuits are built, set up, and proven/verified across their full parameter sets — full results, methodology, and reproduction steps in [circuits/BASELINE_RESULTS.md](../../circuits/BASELINE_RESULTS.md). `poseidon-baseline` additionally has real, repeated, device-tagged records via F1.3's now-implemented pipeline — the other three circuits haven't been wired through mopro on-device yet, so their desktop numbers are still the only data point. Re-baselining the remaining three on real hardware is expected.
 
 ---
 
 ## 6. iOS Native Proving Integration Layer (F1.1)
 
-**Requirement:** "A circom circuit SHALL prove on the iPhone 14 Pro natively."
+**Requirement:** "A circom circuit MUST prove on the iPhone 14 Pro natively."
 
 **Circuit used:** the `poseidon-baseline` (arity 2) circuit — the simplest available, chosen specifically to exercise the *full* toolchain path early (mitigates R2: Phase 4 integration risk, by front-loading the same pipeline with a trivial circuit now).
 
@@ -97,21 +97,21 @@ All values go through the measurement harness ([measurement-harness.md](measurem
 1. circom source → R1CS + WASM witness generator (circom)
 2. Trusted setup → proving/verification keys (snarkjs, §4)
 3. mopro-cli generates Swift bindings wrapping the native (non-WASM) Groth16 prover
-4. Minimal SwiftUI harness app (`holder-app-ios/`, Phase 1 scope only — not the full holder app) invokes the binding, generates a proof **on physical device**
+4. Minimal SwiftUI baseline app (`holder-app-ios/`, Phase 1 scope only — not the full holder app) invokes the binding, generates a proof **on physical device**
 5. Proof + public signals exported off-device (via the measurement collector's sync path, or directly for verification testing)
 6. Proof verified against the generated Solidity verifier on Anvil (§7)
 
-**Hard constraint (TR-7):** proofs generated in the iOS Simulator do not count as valid measurements or satisfy F1.1 — must run on the physical iPhone 14 Pro.
+**Hard constraint (TR-6):** proofs generated in the iOS Simulator do not count as valid measurements or satisfy F1.1 — must run on the physical iPhone 14 Pro.
 
-**Status: satisfied.** `holder-app-ios/mopro-baseline` wraps the `poseidon-baseline` circuit via mopro, builds and signs against a free personal-team Apple Developer account, and its `MoproAppUITests.testCircomProveVerify` test — which launches the app on the paired iPhone 14 Pro, taps "Prove", and asserts the proof completes — passed running natively on-device (`xcodebuild test -destination "id=<device UDID>"`, physical device confirmed via `devicectl`/`xctrace`, not the Simulator). Toolchain and device setup steps, including several non-obvious build/signing issues encountered getting here, are recorded in [TOOLCHAIN.md §9](../../TOOLCHAIN.md#9-building-an-f11-style-mopro-app-for-a-physical-device-caveats) for reproducibility (TR-19). Rationale for why this stack (mopro/native bindings) is needed at all is in [ARCHITECTURE.md](../ARCHITECTURE.md), "Native mobile proving" section.
+**Status: satisfied.** `holder-app-ios/mopro-baseline` wraps the `poseidon-baseline` circuit via mopro, builds and signs against a free personal-team Apple Developer account, and its `MoproAppUITests.testCircomProveVerify` test — which launches the app on the paired iPhone 14 Pro, taps "Prove", and asserts the proof completes — passed running natively on-device (`xcodebuild test -destination "id=<device UDID>"`, physical device confirmed via `devicectl`/`xctrace`, not the Simulator). Toolchain and device setup steps, including several non-obvious build/signing issues encountered getting here, are recorded in [TOOLCHAIN.md §9](../../TOOLCHAIN.md#9-building-an-f11-style-mopro-app-for-a-physical-device-caveats) for reproducibility (TR-13). Rationale for why this stack (mopro/native bindings) is needed at all is in [ARCHITECTURE.md](../ARCHITECTURE.md), "Native mobile proving" section.
 
-**No network during proving (TR-8):** the harness app must not require network access while the proof is being generated; the device may go on Wi-Fi only afterward to sync measurement records ([measurement-harness.md §4](measurement-harness.md#4-emission--export-path)).
+**No network during proving (TR-7):** the baseline app must not require network access while the proof is being generated; the device may go on Wi-Fi only afterward to sync measurement records ([measurement-pipeline.md §4](measurement-pipeline.md#4-emission--export-path)).
 
 ---
 
 ## 7. On-Chain Verification Flow (F1.2)
 
-**Requirement:** "A generated verifier SHALL verify a real proof on the local chain, and reject a tampered one."
+**Requirement:** "A generated verifier MUST verify a real proof on the local chain, and reject a tampered one."
 
 **Steps:**
 
@@ -135,4 +135,4 @@ This is the acceptance test for F1.2 directly — no additional interpretation n
 | F1.1 | §6 — proof generated on physical iPhone 14 Pro |
 | F1.2 | §7 — genuine proof accepted, tampered proof/inputs rejected on Anvil |
 | F1.4 | §5 — four baseline circuits measured across their parameter sets |
-| D0 deliverable | §5 + §6 + §7 combined, plus [credential-protocol.md](../credential-protocol.md) (F1.5) and [measurement-harness.md](measurement-harness.md) (F1.3) |
+| Phase 1 deliverable | §5 + §6 + §7 combined, plus [credential-protocol.md](../credential-protocol.md) (F1.5) and [measurement-pipeline.md](measurement-pipeline.md) (F1.3) |

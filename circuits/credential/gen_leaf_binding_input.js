@@ -1,5 +1,5 @@
 // Generates input_leaf_binding.json for Alice's real (attr_hash, leaf)
-// pair - the F2.8 leaf-binding proof's end-to-end validation
+// pair - the F2.7 leaf-binding proof's end-to-end validation
 // (PHASE2_RESULTS.md).
 const fs = require("fs");
 const path = require("path");

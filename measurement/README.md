@@ -1,6 +1,6 @@
-# Measurement Harness
+# Measurement Pipeline
 
-F1.3 (TR-16–TR-19). See [specs/phase-1/measurement-harness.md](../specs/phase-1/measurement-harness.md) for the full design.
+F1.3 (TR-8, TR-13). See [specs/phase-1/measurement-pipeline.md](../specs/phase-1/measurement-pipeline.md) for the full design.
 
 ## Reproducing a clean run
 
@@ -9,7 +9,7 @@ F1.3 (TR-16–TR-19). See [specs/phase-1/measurement-harness.md](../specs/phase-
    cd measurement/collector
    node server.js
    ```
-   Listens on `:3003` on all interfaces (not just localhost) so the iPhone can reach it over the local network (TR-22).
+   Listens on `:3003` on all interfaces (not just localhost) so the iPhone can reach it over the local network.
 
 2. **Find the Mac's local IP** and make sure it matches `collectorURL` in `holder-app-ios/mopro-baseline/ios/MoproApp/ContentView.swift`:
    ```sh
@@ -17,7 +17,7 @@ F1.3 (TR-16–TR-19). See [specs/phase-1/measurement-harness.md](../specs/phase-
    ```
    Update and rebuild the app if the Mac's IP has changed (DHCP leases aren't permanent).
 
-3. **Build and run the app on the physical iPhone** (TR-7 — simulator runs are invalid):
+3. **Build and run the app on the physical iPhone** (TR-6 — simulator runs are invalid):
    ```sh
    cd holder-app-ios/mopro-baseline/ios
    xcodebuild test -project MoproApp.xcodeproj -scheme MoproApp \
@@ -41,6 +41,6 @@ F1.3 (TR-16–TR-19). See [specs/phase-1/measurement-harness.md](../specs/phase-
 ## Files
 
 - `collector/server.js` — plain Node HTTP service, no dependencies. `POST /records` (idempotent on `record_id`), `GET /health`.
-- `records/records.ndjson` — one JSON record per line, append-only. Committed to the repo as real collected data, not gitignored — small, human-readable, and part of the reproducible result set (TR-19).
+- `records/records.ndjson` — one JSON record per line, append-only. Committed to the repo as real collected data, not gitignored — small, human-readable, and part of the reproducible result set (TR-13).
 - `analyze/analyze.py` — stdlib-only (no pandas dependency, despite the original spec draft's mention of it — wasn't worth adding a Python dependency for this data volume).
 - `reports/` — generated output, regenerate anytime with `analyze.py`.

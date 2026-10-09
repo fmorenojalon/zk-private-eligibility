@@ -11,7 +11,7 @@ A greenfield zero-knowledge credential system: a holder proves on their own phon
 | The cryptographic/protocol design — credential schema, predicates, nullifier, threat model | [`specs/credential-protocol.md`](specs/credential-protocol.md) |
 | Toolchain setup and clean-build reproduction | [`TOOLCHAIN.md`](TOOLCHAIN.md) |
 | The circuits and on-chain verifier | [`contracts/README.md`](contracts/README.md) |
-| The measurement harness | [`measurement/README.md`](measurement/README.md) |
+| The measurement pipeline | [`measurement/README.md`](measurement/README.md) |
 
 ## Repo layout
 
@@ -24,7 +24,7 @@ specs/                   the specification suite
 TOOLCHAIN.md              exact versions, install commands, build gotchas
 circuits/                 circom circuits + BASELINE_RESULTS.md
 contracts/                Foundry project: generated verifier, tests, README
-holder-app-ios/           iOS proving harness (mopro)
+holder-app-ios/           iOS baseline app (mopro)
 measurement/              collector, analysis, records, README
 issuer-service/           TBD
 platform-backend/         TBD

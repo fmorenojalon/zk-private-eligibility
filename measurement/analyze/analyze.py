@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""F1.3 measurement analysis (specs/phase-1/measurement-harness.md §5).
+"""F1.3 measurement analysis (specs/phase-1/measurement-pipeline.md §5).
 
 Ingests measurement/records/records.ndjson, groups by (circuit.name,
 circuit.parameters), and writes mean/median/p95/stddev summary tables to

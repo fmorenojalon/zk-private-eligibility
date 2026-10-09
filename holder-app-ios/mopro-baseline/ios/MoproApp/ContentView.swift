@@ -2,16 +2,16 @@
 //  ContentView.swift
 //  MoproApp
 //
-//  Phase 1 (F1.1) toolchain plumbing harness: proves the poseidon-baseline
+//  Phase 1 (F1.1) toolchain smoke-test app: proves the poseidon-baseline
 //  circuit (specs/phase-1/toolchain-baseline.md §6) natively on-device.
 //  Also F1.3: emits a structured measurement record per run
-//  (specs/phase-1/measurement-harness.md §2) and syncs it to the
+//  (specs/phase-1/measurement-pipeline.md §2) and syncs it to the
 //  measurement collector.
 //
 import SwiftUI
 
 // Collector runs on the Mac (measurement/collector, port 3003) and the
-// iPhone reaches it over the local network (TR-22). Update to match
+// iPhone reaches it over the local network. Update to match
 // whatever `ipconfig getifaddr en0` reports on the Mac being used.
 private let collectorURL = URL(string: "http://192.168.1.169:3003/records")!
 

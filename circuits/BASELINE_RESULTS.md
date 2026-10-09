@@ -2,7 +2,7 @@
 
 Satisfies F1.4: "Baseline costs SHALL be established for Poseidon, Merkle inclusion at three depths, range comparison, and EdDSA verification."
 
-**Methodology.** Desktop measurements (MacBook Air M3, macOS 15.6.1) using the pinned toolchain (circom 2.2.3, snarkjs 0.7.6, circomlib @ `35e54ea2`) — see [TOOLCHAIN.md](../TOOLCHAIN.md). Each circuit: `circom --r1cs --wasm` for constraint counts, Hermez Powers-of-Tau + `snarkjs groth16 setup` + one dev contribution for the proving/verification keys, then a single witness-generation → proving → verification pass timed with wall-clock `date +%s%N` deltas around each `snarkjs`/`node` invocation. These are **desktop, single-run** numbers. `poseidon-baseline` (arity 2) additionally has real **structured, device-tagged, repeated on-device records** via F1.3's measurement harness (§"On-device" below) — the other three circuits haven't been wired through mopro on-device yet.
+**Methodology.** Desktop measurements (MacBook Air M3, macOS 15.6.1) using the pinned toolchain (circom 2.2.3, snarkjs 0.7.6, circomlib @ `35e54ea2`) — see [TOOLCHAIN.md](../TOOLCHAIN.md). Each circuit: `circom --r1cs --wasm` for constraint counts, Hermez Powers-of-Tau + `snarkjs groth16 setup` + one dev contribution for the proving/verification keys, then a single witness-generation → proving → verification pass timed with wall-clock `date +%s%N` deltas around each `snarkjs`/`node` invocation. These are **desktop, single-run** numbers. `poseidon-baseline` (arity 2) additionally has real **structured, device-tagged, repeated on-device records** via F1.3's measurement pipeline (§"On-device" below) — the other three circuits haven't been wired through mopro on-device yet.
 
 ## Results
 
@@ -20,7 +20,7 @@ ptau file sizes: power 12 → 4.6 MB, power 14 → 18.1 MB, power 16 → 72.1 MB
 
 ### On-device (iPhone 14 Pro, native — F1.3)
 
-Now that the measurement harness exists ([measurement/README.md](../measurement/README.md)), `poseidon-baseline` (arity 2) has real device-tagged records — n=3, via `measurement/analyze/analyze.py`:
+Now that the measurement pipeline exists ([measurement/README.md](../measurement/README.md)), `poseidon-baseline` (arity 2) has real device-tagged records — n=3, via `measurement/analyze/analyze.py`:
 
 | Metric | Mean | Median | p95 |
 | --- | --- | --- | --- |
@@ -32,7 +32,7 @@ Now that the measurement harness exists ([measurement/README.md](../measurement/
 
 **Note:** `witness_gen_ms` is 0 in every on-device record — mopro's `generate_circom_proof` bundles witness generation and proving into one opaque FFI call with no separate timing hook exposed to Swift, so the combined time is reported entirely under `proving_ms`. Splitting this would need changes to mopro-ffi itself, out of scope here.
 
-The other three circuits haven't been wired through mopro on-device yet (only `poseidon-baseline` has an iOS harness app built against it, per F1.1).
+The other three circuits haven't been wired through mopro on-device yet (only `poseidon-baseline` has an iOS baseline app built against it, per F1.1).
 
 ## Observations
 

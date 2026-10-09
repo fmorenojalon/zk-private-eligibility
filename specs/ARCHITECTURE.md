@@ -10,11 +10,11 @@ This document explains *why* the project's technology choices are what they are,
 | What's the credential schema, predicates, nullifier, threat model? | [`credential-protocol.md`](credential-protocol.md) |
 | Why this technology, at each layer? | This document |
 | Exact versions, install commands, build caveats | [`../TOOLCHAIN.md`](../TOOLCHAIN.md) |
-| Phase 1 requirements and acceptance status | [`phase-1/toolchain-baseline.md`](phase-1/toolchain-baseline.md), [`phase-1/measurement-harness.md`](phase-1/measurement-harness.md) |
+| Phase 1 requirements and acceptance status | [`phase-1/toolchain-baseline.md`](phase-1/toolchain-baseline.md), [`phase-1/measurement-pipeline.md`](phase-1/measurement-pipeline.md) |
 
 ## System topology
 
-Per PRD §9.1 — everything runs on the MacBook Air M3 except the holder app, which runs on the iPhone 14 Pro, communicating over the local network. Nothing is hosted externally (TR-20).
+Per PRD §9.1 — everything runs on a local machine except the holder app, which runs on the iPhone 14 Pro, communicating over the local network. Nothing is hosted externally (TR-14).
 
 | Service | Role | Stack |
 | --- | --- | --- |
@@ -29,7 +29,7 @@ Per PRD §9.1 — everything runs on the MacBook Air M3 except the holder app, w
 
 What's actually built vs. still planned is tracked by phase in PRD §10, not duplicated here — this table describes the topology and stack choices, not build progress.
 
-Trust boundaries (what crosses which boundary, and what never does) are defined in `credential-protocol.md` §8.3 and PRD §9.4 — not repeated here to avoid drift between two copies of the same table.
+Trust boundaries (what crosses which boundary, and what never does) are defined in `credential-protocol.md` §8.3 — not repeated here to avoid drift between copies of the same table.
 
 ---
 
@@ -39,7 +39,7 @@ Trust boundaries (what crosses which boundary, and what never does) are defined 
 
 **Why:** Groth16 produces the smallest proofs and cheapest verification of the mainstream proving systems — relevant because verification happens on-chain, where every byte and every opcode costs gas. BN254 specifically because Ethereum has native precompiles for it (`ecAdd`, `ecMul`, `ecPairing` at addresses 6/7/8, added via EIP-196/197) — a different curve would mean implementing pairing arithmetic in Solidity itself, orders of magnitude more expensive. This is the single biggest reason circom/snarkjs-generated verifiers default to BN254, and it's why `contracts/src/Groth16Verifier.sol`'s `verifyProof` is ~50 lines of Yul calling three `staticcall`s rather than a from-scratch elliptic-curve implementation — see [`../contracts/README.md`](../contracts/README.md) for exactly what that generated contract contains and how verification works mechanically.
 
-**Tradeoff accepted:** Groth16 needs a circuit-specific trusted setup (a new ceremony per circuit, TR-5) — PLONK-family systems avoid this at the cost of larger proofs/more expensive verification. For a solo research PoC where the "ceremony" is one local `snarkjs zkey contribute` run rather than a real multi-party ceremony, this cost is negligible; it would matter more for a production deployment (PRD L6: "not production-hardened").
+**Tradeoff accepted:** Groth16 needs a circuit-specific trusted setup (a new ceremony per circuit, TR-4) — PLONK-family systems avoid this at the cost of larger proofs/more expensive verification. For a solo research PoC where the "ceremony" is one local `snarkjs zkey contribute` run rather than a real multi-party ceremony, this cost is negligible; it would matter more for a production deployment (production security is out of scope, PRD §12).
 
 ---
 
@@ -59,9 +59,9 @@ Desktop and iOS need fundamentally different proving stacks, not just different 
 
 ## Measurement: plain Node collector, stdlib Python analysis
 
-**Choice:** No framework on either side. The collector (`measurement/collector/server.js`) is Node's built-in `http` module, no dependencies. Analysis (`measurement/analyze/analyze.py`) uses only `json` and `statistics` from the Python standard library — the spec originally called for pandas, revised after implementation showed it added install friction without adding capability at this data volume (dozens to low-hundreds of records, not pandas's large-N territory). See [`measurement-harness.md` §5](phase-1/measurement-harness.md#5-analysis-scripts) for that reasoning in place.
+**Choice:** No framework on either side. The collector (`measurement/collector/server.js`) is Node's built-in `http` module, no dependencies. Analysis (`measurement/analyze/analyze.py`) uses only `json` and `statistics` from the Python standard library — the spec originally called for pandas, revised after implementation showed it added install friction without adding capability at this data volume (dozens to low-hundreds of records, not pandas's large-N territory). See [`measurement-pipeline.md` §5](phase-1/measurement-pipeline.md#5-analysis-scripts) for that reasoning in place.
 
-**Why minimal matters here specifically:** the collector's only job is to receive NDJSON over local HTTP and deduplicate by `record_id` — a real dependency (Express, etc.) would add attack surface and install steps for a service that exists only to run on localhost during development. TR-19 (clean-checkout reproducibility) is better served by fewer things that can be the wrong version.
+**Why minimal matters here specifically:** the collector's only job is to receive NDJSON over local HTTP and deduplicate by `record_id` — a real dependency (Express, etc.) would add attack surface and install steps for a service that exists only to run on localhost during development. TR-13 (clean-checkout reproducibility) is better served by fewer things that can be the wrong version.
 
 ---
 

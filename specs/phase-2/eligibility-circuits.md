@@ -1,6 +1,6 @@
 # Phase 2 — Eligibility Circuit Suite
 
-**Satisfies:** F2.1–F2.8 · **Builds against:** [`../credential-protocol.md`](../credential-protocol.md) (design, already complete — this document is the implementation plan, not a re-derivation)
+**Satisfies:** F2.1–F2.7 · **Builds against:** [`../credential-protocol.md`](../credential-protocol.md) (design, already complete — this document is the implementation plan, not a re-derivation)
 **Status:** Implemented and verified — all circuits pass their full test suite and a real setup→prove→verify pass; see [`../../circuits/credential/PHASE2_RESULTS.md`](../../circuits/credential/PHASE2_RESULTS.md).
 
 > Where Phase 1's `credential-protocol.md` defines *what* the credential, predicates, and nullifier are, this document defines *how they become circom files*: module layout, parameterization, and the test matrix. Design decisions already settled in `credential-protocol.md` are referenced, not repeated.
@@ -9,7 +9,7 @@
 
 ## 1. Objective
 
-Implement the credential commitment and the full EU-regime predicate logic (P1–P9) as circom circuits, parameterized per TR-6, with a correctness test suite proving eligible holders produce valid proofs and ineligible ones cannot (D1's acceptance bar).
+Implement the credential commitment and the full EU-regime predicate logic (P1–P9) as circom circuits, parameterized per TR-5, with a correctness test suite proving eligible holders produce valid proofs and ineligible ones cannot (Phase 2's acceptance bar).
 
 ---
 
@@ -25,14 +25,14 @@ circuits/credential/
 ├── circuit_full.circom          component main - full EU 2-of-2 regime, depth 20
 └── test/
     ├── fixtures.js               Alice/Bob/Charlie attribute sets, Merkle trees, expected outcomes
-    └── eligibility.test.js       circom_tester + Mocha suite (F2.7)
+    └── eligibility.test.js       circom_tester + Mocha suite (F2.6)
 ```
 
 P5/P8 need no new file at all — both `include` `circuits/merkle-baseline/template.circom` directly and instantiate `MerkleBaseline` against their own root, reused as-is rather than redefined. P9's nullifier is a single inline `Poseidon(2)` call in each composite circuit file, small enough that a dedicated file would be pure overhead.
 
 **Per-primitive file separation, not one shared template file.** Follows Phase 1's own convention (`range-baseline/`, `merkle-baseline/`, `eddsa-baseline/` as distinct directories, each scoped to one primitive) rather than bundling every new template into a single `predicates.circom`. Each of `range_predicates.circom`, `threshold.circom`, and `indexed_nonmembership.circom` corresponds to one distinct construction with its own reasoning and, eventually, its own constraint-count story — keeping them separate mirrors how Phase 1 measured Poseidon, Merkle, range, and EdDSA as four standalone circuits rather than one combined one, and avoids growing a single file to ten templates of increasingly unrelated shape as Phase 5 adds more.
 
-**Why three circuit files, not a single "predicate count N" parameterized template.** TR-6 says "parameterised over... predicate count," but the predicates aren't interchangeable units a generic integer can select between — P1 is a range check, P8 is Merkle membership, P4 is threshold logic over the other two. A single template taking `N` and picking "the first N predicates" doesn't correspond to any real question the complexity parameters want answered. Concretely: `circuit_p1only.circom`, `circuit_condab.circom`, and `circuit_full.circom` share every sub-template file above and differ only in which of them each top-level circuit instantiates and constrains — that *is* the parameterization TR-6 asks for, just realized as named configurations rather than one integer setting.
+**Why three circuit files, not a single "predicate count N" parameterized template.** TR-5 says "parameterised over... predicate count," but the predicates aren't interchangeable units a generic integer can select between — P1 is a range check, P8 is Merkle membership, P4 is threshold logic over the other two. A single template taking `N` and picking "the first N predicates" doesn't correspond to any real question the complexity parameters want answered. Concretely: `circuit_p1only.circom`, `circuit_condab.circom`, and `circuit_full.circom` share every sub-template file above and differ only in which of them each top-level circuit instantiates and constrains — that *is* the parameterization TR-5 asks for, just realized as named configurations rather than one integer setting.
 
 **Why three, not two.** Two range endpoints (minimum, maximum) would only show that cost differs between "P1 alone" and "everything" — not how that difference is distributed. `circuit_condab.circom` sits between them: the full `P4 = ThresholdOfN(2,2)` composition over P1–P4, plus the always-structural P7/P8/P9, but without P5/P6. Once constraint counts are measured, this turns one combined delta into two attributable ones: `cost(circuit_condab) − cost(circuit_p1only)` isolates P3+P4; `cost(circuit_full) − cost(circuit_condab)` isolates P5+P6 — the more interesting number, since P6 (`IndexedNonMembership`) is the one predicate here with no existing baseline to compare against.
 
@@ -46,7 +46,7 @@ Phase 5's fuller complexity-parameter sweep (F5.1) can add more named configurat
 
 Fully specified in `credential-protocol.md §4.2`: `attr_hash = Poseidon(9 attributes)`, `leaf = Poseidon(holder_secret, attr_hash)`. No open design question — this is a direct implementation of an existing formula. One clarification worth stating explicitly here since it affects every circuit variant: **`attr_hash` always takes all nine attributes, regardless of which predicates a given circuit variant checks.** `circuit_p1only.circom` still declares all nine attribute signals as private inputs — it just doesn't constrain most of them against a threshold. There's no "partial credential" concept; the commitment structure is fixed per `credential-protocol.md`, only which *checks* run varies.
 
-**No signature appears anywhere in these circuits, by design, not by omission.** F2.1 originally cited TR-3 (issuer EdDSA signature) alongside the Poseidon commitment; TR-3 is now retired (PRD §11 L10). Credential authenticity rests entirely on registry access control — a leaf can only enter the valid-set tree via a transaction from the issuer's address (`credential-protocol.md §3`), so tree membership already proves issuer authorization. That's Phase 3 infrastructure, not something a Phase 2 circuit template checks or could check. Access control is the property doing the real work here; it's cheaper than a signature and sufficient under this PoC's trust model (issuer honesty is already assumed, PRD L1), at the cost of authenticity depending on that one registry contract's access-control logic being correct rather than being independently verifiable the way a signature would be.
+**No signature appears anywhere in these circuits, by design, not by omission.** F2.1 originally cited an issuer EdDSA signature alongside the Poseidon commitment; that is now retired (PRD §11 L3). Credential authenticity rests entirely on registry access control — a leaf can only enter the valid-set tree via a transaction from the issuer's address (`credential-protocol.md §3`), so tree membership already proves issuer authorization. That's Phase 3 infrastructure, not something a Phase 2 circuit template checks or could check. Access control is the property doing the real work here; it's cheaper than a signature and sufficient under this PoC's trust model (issuer honesty is already assumed, PRD L1), at the cost of authenticity depending on that one registry contract's access-control logic being correct rather than being independently verifiable the way a signature would be.
 
 ---
 
@@ -87,15 +87,11 @@ Each predicate from `credential-protocol.md §5` becomes an independent, indepen
 
 ---
 
-*F2.5 (investment ceiling) is retired — removed from scope, `credential-protocol.md §5`. No section here.*
+## 7. F2.6 — Test Suite
 
----
+**Tooling:** [`circom_tester`](https://github.com/iden3/circom_tester) `0.0.24` + Mocha `12.0.0`, both new `devDependencies` in `circuits/package.json`. `circom_tester`'s `wasm_tester(path)` compiles a circuit for testing; `circuit.calculateWitness(inputs)` computes a witness; `circuit.checkConstraints(witness)` asserts it's valid. For inputs that should be **rejected**, the test asserts `calculateWitness` itself throws — this isn't a workaround, it's the literal mechanism PR-4 relies on ("no valid witness exists" for a failing predicate), and it's much faster per-test than F1.4's full setup+prove+verify pattern since no trusted setup or Groth16 proving runs per test case — appropriate here given F2.6 needs dozens of test vectors, not the handful F1.4 measured.
 
-## 7. F2.7 — Test Suite
-
-**Tooling:** [`circom_tester`](https://github.com/iden3/circom_tester) `0.0.24` + Mocha `12.0.0`, both new `devDependencies` in `circuits/package.json`. `circom_tester`'s `wasm_tester(path)` compiles a circuit for testing; `circuit.calculateWitness(inputs)` computes a witness; `circuit.checkConstraints(witness)` asserts it's valid. For inputs that should be **rejected**, the test asserts `calculateWitness` itself throws — this isn't a workaround, it's the literal mechanism PR-4 relies on ("no valid witness exists" for a failing predicate), and it's much faster per-test than F1.4's full setup+prove+verify pattern since no trusted setup or Groth16 proving runs per test case — appropriate here given F2.7 needs dozens of test vectors, not the handful F1.4 measured.
-
-**What "malformed inputs" means here, concretely.** F2.7 calls for coverage across "eligible, ineligible, boundary, and malformed" inputs. In this suite, malformed means adversarially-invalid *values* on an otherwise well-formed input — a wrong `holder_secret`, a tampered Merkle sibling, an out-of-set `identity_commitment` (cases 5, 6, 8, 9, 10, 19 below). It does not mean structurally malformed *shapes* (wrong-length arrays, non-boolean flags) — those would surface as a JS-level error in the test harness itself before ever reaching circuit constraints, so testing them exercises `circom_tester`'s own input handling, not this circuit's logic, and isn't included here.
+**What "malformed inputs" means here, concretely.** F2.6 calls for coverage across "eligible, ineligible, boundary, and malformed" inputs. In this suite, malformed means adversarially-invalid *values* on an otherwise well-formed input — a wrong `holder_secret`, a tampered Merkle sibling, an out-of-set `identity_commitment` (cases 5, 6, 8, 9, 10, 19 below). It does not mean structurally malformed *shapes* (wrong-length arrays, non-boolean flags) — those would surface as a JS-level error in the test code itself before ever reaching circuit constraints, so testing them exercises `circom_tester`'s own input handling, not this circuit's logic, and isn't included here.
 
 **Fixtures** (`test/fixtures.js`), using the PRD's own personas for narrative continuity with `PRD.md §5`:
 - **Alice** — income €70,000, portfolio €150,000, 24 months financial-sector experience, valid jurisdiction, not sanctioned, credential in the current `validSetRoot`, expiry epoch > current epoch. Qualifies on every predicate.
@@ -133,9 +129,9 @@ Each predicate from `credential-protocol.md §5` becomes an independent, indepen
 
 Cases involving `P1`–`P4` combination logic or `P5`/`P6` (1–4, 9–10, 19–20) need `circuit_full.circom`; cases 15–16 are explicitly against `circuit_p1only.circom`; cases 17–18 are explicitly against `circuit_condab.circom`; case 14 is a standalone template test, no circuit file. Everything else (5–8, 11–13, 21) exercises `P7`/`P8`/`P9`, which are structural to all three circuits regardless of predicate-count configuration, so it doesn't matter which one runs them — `circuit_full.circom` is the natural default.
 
-**End-to-end proof validation — the "valid proofs" half of D1's acceptance bar.** The 21-case matrix above only ever runs `calculateWitness`/`checkConstraints` — it proves a satisfying assignment exists, not that the circuit actually survives a trusted setup and produces a proof that verifies. That's a different claim, and D1 requires it explicitly ("eligible holders produce valid proofs"). So, once per circuit configuration (`circuit_p1only`, `circuit_condab`, `circuit_full` — three runs total, not per test case), run the full F1.4 pipeline against Alice's eligible fixture: `circom --r1cs --wasm`, Powers-of-Tau + `snarkjs groth16 setup` + one dev contribution, `groth16 prove`, `groth16 verify`. This is deliberately not run per test case — full setup is expensive relative to `circom_tester`'s witness-only path, and correctness across the 21 cases is already the witness suite's job; this pass exists only to confirm genuine end-to-end provability, once, per configuration.
+**End-to-end proof validation — the "valid proofs" half of Phase 2's acceptance bar.** The 21-case matrix above only ever runs `calculateWitness`/`checkConstraints` — it proves a satisfying assignment exists, not that the circuit actually survives a trusted setup and produces a proof that verifies. That's a different claim, and Phase 2's acceptance requires it explicitly ("eligible holders produce valid proofs"). So, once per circuit configuration (`circuit_p1only`, `circuit_condab`, `circuit_full` — three runs total, not per test case), run the full F1.4 pipeline against Alice's eligible fixture: `circom --r1cs --wasm`, Powers-of-Tau + `snarkjs groth16 setup` + one dev contribution, `groth16 prove`, `groth16 verify`. This is deliberately not run per test case — full setup is expensive relative to `circom_tester`'s witness-only path, and correctness across the 21 cases is already the witness suite's job; this pass exists only to confirm genuine end-to-end provability, once, per configuration.
 
-This same pass produces the constraint counts D1 also requires ("documented per configuration") as a side effect of the `--r1cs` step. Record results in `circuits/credential/PHASE2_RESULTS.md`, following `circuits/BASELINE_RESULTS.md`'s exact table format (constraints, ptau power, witness gen/proving/verify time, zkey size) — one row per configuration, directly comparable to F1.4's baseline numbers.
+This same pass produces the constraint counts Phase 2's acceptance also requires ("documented per configuration") as a side effect of the `--r1cs` step. Record results in `circuits/credential/PHASE2_RESULTS.md`, following `circuits/BASELINE_RESULTS.md`'s exact table format (constraints, ptau power, witness gen/proving/verify time, zkey size) — one row per configuration, directly comparable to F1.4's baseline numbers.
 
 ---
 
@@ -156,19 +152,18 @@ No other new tools — everything else (circom 2.2.3, the Poseidon/Merkle/compar
 
 | Requirement | Satisfied by |
 | --- | --- |
-| F2.1 | §3 — direct implementation of `credential-protocol.md §4.2`'s formulas; no signature (TR-3 retired, PRD L10) |
+| F2.1 | §3 — direct implementation of `credential-protocol.md §4.2`'s formulas; no signature (retired, PRD L3) |
 | F2.2 | §4 — one template per predicate, organized into files by primitive (§2) |
-| F2.3 | §6 — the standalone `ThresholdOfN(2,3)` test demonstrates the EU 2-of-3 regime is *architecturally* satisfiable (PR-13); §5's `circuit_full.circom` only wires the actual 2-of-2 MVP scope (PRD L7) — the third condition isn't instantiated as a live circuit here |
+| F2.3 | §6 — the standalone `ThresholdOfN(2,3)` test demonstrates the EU 2-of-3 regime is *architecturally* satisfiable (PR-12); §5's `circuit_full.circom` only wires the actual 2-of-2 MVP scope (PRD §2.2) — the third condition isn't instantiated as a live circuit here |
 | F2.4 | §6 — `ThresholdOfN`, plus the N=3 genericity test |
-| F2.5 | *Retired* — investment ceiling removed from scope |
-| F2.6 | §2 — three named configurations sharing depth-parameterized sub-templates |
-| F2.7 | §7 — 21-case matrix via `circom_tester`, derived from the threat model's attack table (plus the unlinkability property and three boundary cases that aren't attack-table rows) |
-| D1 deliverable | All of the above, plus §7's end-to-end setup+prove+verify pass per configuration, with constraint counts and timings recorded in `circuits/credential/PHASE2_RESULTS.md` |
-| F2.8 | §10 — `leaf_binding.circom`, addendum below |
+| F2.5 | §2 — three named configurations sharing depth-parameterized sub-templates |
+| F2.6 | §7 — 21-case matrix via `circom_tester`, derived from the threat model's attack table (plus the unlinkability property and three boundary cases that aren't attack-table rows) |
+| F2.7 | §10 — `leaf_binding.circom`, addendum below |
+| Phase 2 deliverable | All of the above, plus §7's end-to-end setup+prove+verify pass per configuration, with constraint counts and timings recorded in `circuits/credential/PHASE2_RESULTS.md` |
 
 ---
 
-## 10. Addendum — F2.8 Leaf-Binding Proof
+## 10. Addendum — F2.7 Leaf-Binding Proof
 
 Added after design review surfaced a real gap (`credential-protocol.md §4.3`): the issuer computing `attr_hash` from its own records (§3 above) and sending it to the holder confirms what the value *is*, but not that the `leaf` the holder actually submits back was built from it — since `leaf = Poseidon(holder_secret, attr_hash)` and the issuer never learns `holder_secret` (PR-5), it has no way to check that equation directly. A dishonest holder could receive one `attr_hash` from the issuer, then commit a leaf built from a different, fabricated one, undetected.
 
@@ -178,4 +173,4 @@ Added after design review surfaced a real gap (`credential-protocol.md §4.3`): 
 
 **End-to-end validation**: setup→prove→verify pass, same methodology as §7, recorded in `PHASE2_RESULTS.md` alongside the three eligibility configurations.
 
-**Where it runs**: at issuance, off-chain — issuance already happens over local HTTP (F3.3), not on-chain, so the issuer verifies this proof itself before inserting the leaf. No on-chain verifier or gas cost for this step.
+**Where it runs**: at issuance, off-chain — issuance already happens over local HTTP (PRD §9.3), not on-chain, so the issuer verifies this proof itself before inserting the leaf. No on-chain verifier or gas cost for this step.

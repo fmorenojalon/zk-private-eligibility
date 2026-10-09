@@ -1,6 +1,6 @@
 # Phase 2 — Eligibility Circuit Constraint Counts
 
-Satisfies F2.6/D1's "constraint counts per configuration" requirement, plus the end-to-end proof validation from [`../../specs/phase-2/eligibility-circuits.md` §7](../../specs/phase-2/eligibility-circuits.md#7-f27--test-suite) — all three eligibility configurations, plus the F2.8 leaf-binding addendum (`credential-protocol.md §4.3`), have now gone through a real setup→prove→verify pass, not just witness generation.
+Satisfies F2.5 and Phase 2's "constraint counts per configuration" acceptance criterion, plus the end-to-end proof validation from [`../../specs/phase-2/eligibility-circuits.md` §7](../../specs/phase-2/eligibility-circuits.md#7-f26--test-suite) — all three eligibility configurations, plus the F2.7 leaf-binding addendum (`credential-protocol.md §4.3`), have now gone through a real setup→prove→verify pass, not just witness generation.
 
 **Methodology.** Same as `circuits/BASELINE_RESULTS.md`: desktop measurements (same machine), `circom --r1cs --wasm` for constraint counts, Hermez Powers-of-Tau (reused from `circuits/merkle-baseline/` — power 14 covers `circuit_p1only`/`circuit_condab`, power 16 covers `circuit_full`) + `snarkjs groth16 setup` + one dev contribution, then a single witness-generation → proving → verification pass timed with wall-clock `date +%s%N` deltas. All three ran against Alice's eligible fixture (`test/fixtures.js`) — the case each is expected to accept.
 
@@ -11,7 +11,7 @@ Satisfies F2.6/D1's "constraint counts per configuration" requirement, plus the 
 | `circuit_p1only.circom` | 6,023 | 6,852 | 12,875 | 14 | 232 ms | 8,658 ms | 2,151 ms | 1,323 ms | 382 ms | 5.5 MB |
 | `circuit_condab.circom` | 6,163 | 6,866 | 13,029 | 14 | 86 ms | 8,594 ms | 2,045 ms | 1,306 ms | 385 ms | 5.5 MB |
 | `circuit_full.circom` | 16,778 | 18,176 | 34,954 | 16 | 103 ms | 12,774 ms | 5,969 ms | 2,328 ms | 388 ms | 16.1 MB |
-| `leaf_binding.circom` (F2.8 addendum) | 459 | 473 | 932 | 14 | 58 ms | 1,054 ms | 519 ms | 450 ms | 380 ms | 397 KB |
+| `leaf_binding.circom` (F2.7 addendum) | 459 | 473 | 932 | 14 | 58 ms | 1,054 ms | 519 ms | 450 ms | 380 ms | 397 KB |
 
 Standalone, for reference (from building P6 in isolation — [eligibility-circuits.md §4](../../specs/phase-2/eligibility-circuits.md#4-f22--predicate-templates-p1p9)):
 
@@ -19,7 +19,7 @@ Standalone, for reference (from building P6 in isolation — [eligibility-circui
 | --- | --- | --- | --- |
 | `IndexedNonMembership(20)` | 5,694 | 5,828 | 11,522 |
 
-All three `groth16 verify` runs returned `OK`, against genuine proofs (not witness-only satisfiability) — this is the concrete confirmation of D1's "eligible holders produce valid proofs," not just an inference from `calculateWitness` succeeding.
+All three `groth16 verify` runs returned `OK`, against genuine proofs (not witness-only satisfiability) — this is the concrete confirmation of Phase 2's "eligible holders produce valid proofs," not just an inference from `calculateWitness` succeeding.
 
 ## Observations
 

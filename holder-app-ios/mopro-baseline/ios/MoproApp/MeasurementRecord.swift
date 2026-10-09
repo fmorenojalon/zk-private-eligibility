@@ -3,7 +3,7 @@
 //  MoproApp
 //
 //  F1.3: structured measurement records per
-//  specs/phase-1/measurement-harness.md §2, persisted locally first and
+//  specs/phase-1/measurement-pipeline.md §2, persisted locally first and
 //  synced to the collector afterward (§3) so a transient network gap or a
 //  sleeping collector can't lose a run.
 //
@@ -83,7 +83,7 @@ enum DeviceInfo {
   }
 
   // Small, honest lookup for the devices this project actually targets
-  // (TR-21/TR-22: iPhone 14 Pro + MacBook Pro 2024) rather than a general
+  // (iPhone 14 Pro + MacBook Pro 2024) rather than a general
   // chip-identification library - there is no public iOS API that maps a
   // hardware identifier to a marketing chip name.
   static var chipName: String {

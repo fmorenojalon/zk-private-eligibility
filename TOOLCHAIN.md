@@ -1,6 +1,6 @@
 # Toolchain Setup
 
-Reproduces the pinned toolchain from [specs/phase-1/toolchain-baseline.md §2](specs/phase-1/toolchain-baseline.md#2-pinned-toolchain-versions) on a clean macOS checkout (TR-19). Run from the repo root unless noted.
+Reproduces the pinned toolchain from [specs/phase-1/toolchain-baseline.md §2](specs/phase-1/toolchain-baseline.md#2-pinned-toolchain-versions) on a clean macOS checkout (TR-13). Run from the repo root unless noted.
 
 ## 1. Homebrew
 

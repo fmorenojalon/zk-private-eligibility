@@ -2,7 +2,7 @@ pragma circom 2.2.3;
 
 include "../node_modules/circomlib/circuits/poseidon.circom";
 
-// Phase 2 addendum (F2.8, PR-23, TR-23). Closes a soundness gap found
+// Phase 2 addendum (F2.7, PR-19). Closes a soundness gap found
 // during design review: the issuer computes attr_hash directly from its
 // own records and sends it to the holder (Flow 1, credential-protocol.md
 // §4.2) - that only confirms what attr_hash IS, not whether the `leaf`
@@ -16,7 +16,7 @@ include "../node_modules/circomlib/circuits/poseidon.circom";
 // Poseidon(holder_secret, attr_hash) = leaf, for attr_hash and leaf as
 // PUBLIC inputs fixed to the issuer's own attested value and the
 // commitment being submitted. The issuer verifies this once per
-// issuance, off-chain (F3.3 - issuance is local HTTP, not on-chain), and
+// issuance, off-chain (PRD §9.3 - issuance is local HTTP, not on-chain), and
 // only inserts the leaf if it holds. holder_secret never appears as
 // anything but a private input - the issuer's view is unchanged from
 // before this fix, it just gains one more check to run.
