@@ -223,7 +223,7 @@ The mechanism specified here is *what* gets checked and recorded, and that it ha
 
 | Boundary | Crosses it | Never crosses it |
 | --- | --- | --- |
-| Issuer → Device | attribute values and expected attribute hash *(issuance)*; Merkle path *(issuance, presentation)*; sanctions and jurisdiction witnesses *(presentation)* | — |
+| Issuer → Device | attribute values and expected attribute hash *(issuance)*; Merkle path *(issuance, presentation)*; sanctions and jurisdiction Merkle paths *(presentation)* | — |
 | Device → Issuer *(issuance)* | holder ID, commitment, leaf-binding proof (§4.3; its public outputs include `secret_hash = Poseidon(holder_secret)`) | holder secret, attribute values |
 | Issuer → Chain | published roots (`validSetRoot`, `sanctionsRoot`), jurisdiction root approvals | leaves, attribute values, holder secret |
 | Device → Issuer *(presentation)* | holder ID, identity commitment, jurisdiction code, and on first use of a jurisdiction root, that root | holder secret, proof, nullifier, scope |
@@ -232,7 +232,7 @@ The mechanism specified here is *what* gets checked and recorded, and that it ha
 | Platform → Chain | proof and public inputs | attribute values, holder secret, holder ID |
 | Device → Collector | measurement records (device, circuit, timings) | credential data, circuit inputs |
 
-The witness fetch tells the issuer which holders present and when. A jurisdiction root narrows the offering only to those sharing that root. This is acceptable under L1, where a single operator runs both issuer and holder.
+The Merkle path fetch tells the issuer which holders present and when. A jurisdiction root narrows the offering only to those sharing that root. This is acceptable under L1, where a single operator runs both issuer and holder.
 
 ### 8.4 Attack → Mitigation Map
 

@@ -58,7 +58,7 @@ cd circuits && npx snarkjs --version   # snarkjs@0.7.6
 
 ## 7. Why the iOS steps look different from desktop
 
-Short version: an iOS app is one compiled, sandboxed binary with no Node.js or script-execution environment inside it, so proving on-device needs a different path than the desktop `circom`/`snarkjs` command-line flow above (§1–§6) — native code (Rust, via mopro) instead of interpreted WASM+JS. Full rationale — why native bindings are needed at all, what "native binding" vs. "Swift bindings" actually means, what mopro's role is, whether this could be built without it, and a note on "witness" terminology across the ZK/blockchain space — now lives in [`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md), since it's about *why the stack looks this way*, not *how to install it*. This file stays focused on exact versions and commands.
+An iOS app is one compiled, sandboxed binary with no Node.js or script runtime inside it, so on-device proving uses native code (Rust, via mopro) instead of the `circom`/`snarkjs` command-line flow of §1–§6. The rationale is in [`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md), "Native mobile proving"; this file stays focused on exact versions and commands.
 
 ## 8. iOS toolchain
 

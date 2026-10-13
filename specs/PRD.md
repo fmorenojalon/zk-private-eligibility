@@ -118,7 +118,7 @@ What the entire system exists to demonstrate, told in three scenarios:
 1. The holder (Alice) browses an offering on the platform (Tokenized Realty Platform).
 2. Platform issues a presentation request specifying scope (this offering, uniquely), epoch, and the offering's registered `jurisdictionRoot`.
 3. Holder app displays *what will be proven and what will be revealed*, and requests consent.
-4. Holder app fetches from the issuer, fresh right before proving (never reusing a value cached from an earlier presentation, since both rotate independently of this offering and often): its Merkle path against the *current* valid-set root and epoch (`GET /credentials/:holderId/path`, which returns path, epoch, and root together — `specs/phase-3/verification-infrastructure.md §4.1`), and its non-membership witness against the *current* `sanctionsRoot` (`GET /sanctions/path/:identityCommitment`, same spec). It also fetches its path for this offering's `jurisdictionRoot` if it doesn't already have one cached for that specific root (`GET /jurisdictions/:root/path/:jurisdictionCode`) — a holder whose jurisdiction isn't in this offering's approved set gets no path back and can't produce a satisfying witness. Holder app then generates the proof **entirely on-device**.
+4. Holder app fetches from the issuer, fresh right before proving (never reusing a value cached from an earlier presentation, since both rotate independently of this offering and often): its Merkle path against the *current* valid-set root and epoch (`GET /credentials/:holderId/path`, which returns path, epoch, and root together — `specs/phase-3/verification-infrastructure.md §4.1`), and its non-membership Merkle path against the *current* `sanctionsRoot` (`GET /sanctions/path/:identityCommitment`, same spec). It also fetches its path for this offering's `jurisdictionRoot` if it doesn't already have one cached for that specific root (`GET /jurisdictions/:root/path/:jurisdictionCode`) — a holder whose jurisdiction isn't in this offering's approved set gets no path back and can't produce a satisfying witness. Holder app then generates the proof **entirely on-device**.
 5. Holder app returns proof and public inputs to the platform.
 6. Platform submits the proof for on-chain verification.
 7. Chain verifies the proof cryptographically, cross-checks its public inputs (`validSetRoot`, `jurisdictionRoot`, `sanctionsRoot`, `currentEpoch`, `scope`) against this offering's own recorded values — proof validity alone doesn't confirm the proof was generated *for this offering*, or that its public inputs are still current (`credential-protocol.md §5.4`) — checks the nullifier is unused, records it, and returns a result.
@@ -257,7 +257,7 @@ If Alice cannot reproduce her original `holder_secret` (lost or replaced device)
 **Issuer service**
 
 - Node.js + TypeScript, HTTP API
-- circomlibjs (Poseidon), incremental Merkle tree library
+- circomlibjs (Poseidon), in-house Merkle and indexed trees
 - snarkjs (verifies leaf-binding proofs)
 - SQLite for credential and tree state
 - Holds the issuer's on-chain account key; publishes roots to the chain
@@ -265,7 +265,7 @@ If Alice cannot reproduce her original `holder_secret` (lost or replaced device)
 **Platform backend**
 
 - Node.js + TypeScript, HTTP API
-- viem or ethers for chain interaction
+- viem for chain interaction
 - Generates presentation requests (scope, epoch, jurisdiction root); receives proofs; submits verification transactions
 
 **Platform frontend**
@@ -291,7 +291,7 @@ If Alice cannot reproduce her original `holder_secret` (lost or replaced device)
 
 | Connection | Transport | Used for |
 | --- | --- | --- |
-| Holder app ↔ Issuer service | local HTTP | credential issuance, witness fetch (Flows 1, 2) |
+| Holder app ↔ Issuer service | local HTTP | credential issuance, Merkle path fetch (Flows 1, 2) |
 | Holder app → Platform backend | local HTTP | proof delivery (Flow 2) |
 | Platform frontend → Holder app | QR code | presentation request (Flow 2) |
 | Platform frontend ↔ Platform backend | local HTTP | creating presentation requests, showing results (Flow 2) |

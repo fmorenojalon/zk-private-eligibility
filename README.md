@@ -10,24 +10,22 @@ A greenfield zero-knowledge credential system: a holder proves on their own phon
 | Why these technologies, and how the pieces fit together | [`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md) |
 | The cryptographic/protocol design — credential schema, predicates, nullifier, threat model | [`specs/credential-protocol.md`](specs/credential-protocol.md) |
 | Toolchain setup and clean-build reproduction | [`TOOLCHAIN.md`](TOOLCHAIN.md) |
-| The circuits and on-chain verifier | [`contracts/README.md`](contracts/README.md) |
+| The circuits and their measured costs | [`circuits/BASELINE_RESULTS.md`](circuits/BASELINE_RESULTS.md), [`circuits/credential/PHASE2_RESULTS.md`](circuits/credential/PHASE2_RESULTS.md) |
+| The on-chain contracts | [`contracts/README.md`](contracts/README.md) |
 | The measurement pipeline | [`measurement/README.md`](measurement/README.md) |
 
 ## Repo layout
 
 ```
-specs/                   the specification suite
-├── PRD.md                requirements: what must be true, phases, status
-├── ARCHITECTURE.md        why this stack, system topology
-├── credential-protocol.md cryptographic/protocol design (cross-phase)
-└── phase-1/                requirements scoped to Phase 1 only
-TOOLCHAIN.md              exact versions, install commands, build gotchas
-circuits/                 circom circuits + BASELINE_RESULTS.md
-contracts/                Foundry project: generated verifier, tests, README
-holder-app-ios/           iOS baseline app (mopro)
-measurement/              collector, analysis, records, README
-issuer-service/           TBD
-platform-backend/         TBD
-platform-frontend/        TBD
+specs/                         the specification suite
+├── PRD.md                      requirements, phases, limitations and scope
+├── ARCHITECTURE.md             why this stack, system topology
+├── credential-protocol.md      cryptographic/protocol design (cross-phase)
+└── phase-1/ phase-2/ phase-3/  per-phase design and tests
+TOOLCHAIN.md                   exact versions, install commands, build gotchas
+circuits/                      circom circuits (baseline primitives, credential) and results reports
+contracts/                     Foundry project: verifiers, registries, offering policy, tests
+holder-app-ios/                iOS baseline app (mopro)
+measurement/                   collector, analysis, records, README
 ```
 
