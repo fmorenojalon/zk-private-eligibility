@@ -1,6 +1,6 @@
 # Toolchain Setup
 
-Reproduces the pinned toolchain from [specs/phase-1/toolchain-baseline.md §2](specs/phase-1/toolchain-baseline.md#2-pinned-toolchain-versions) on a clean macOS checkout (TR-13). Run from the repo root unless noted.
+Reproduces the pinned toolchain from [specs/phase-1/toolchain-baseline.md Section 2](specs/phase-1/toolchain-baseline.md#2-pinned-toolchain-versions) on a clean macOS checkout (TR-13). Run from the repo root unless noted.
 
 ## 1. Homebrew
 
@@ -33,7 +33,7 @@ cargo build --release --manifest-path ~/src/circom/Cargo.toml
 cp ~/src/circom/target/release/circom /opt/homebrew/bin/circom
 ```
 
-Requires Rust/cargo (any recent stable toolchain — mopro's own dependency, so already required elsewhere in this project). Building circom from source needs only a stable toolchain; the *newer* toolchain requirement in §8 is specific to mopro-cli.
+Requires Rust/cargo (any recent stable toolchain — mopro's own dependency, so already required elsewhere in this project). Building circom from source needs only a stable toolchain; the *newer* toolchain requirement in Section 8 is specific to mopro-cli.
 
 ## 5. snarkjs v0.7.6 + circomlib (pinned commit)
 
@@ -58,7 +58,7 @@ cd circuits && npx snarkjs --version   # snarkjs@0.7.6
 
 ## 7. Why the iOS steps look different from desktop
 
-An iOS app is one compiled, sandboxed binary with no Node.js or script runtime inside it, so on-device proving uses native code (Rust, via mopro) instead of the `circom`/`snarkjs` command-line flow of §1–§6. The rationale is in [`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md), "Native mobile proving"; this file stays focused on exact versions and commands.
+An iOS app is one compiled, sandboxed binary with no Node.js or script runtime inside it, so on-device proving uses native code (Rust, via mopro) instead of the `circom`/`snarkjs` command-line flow of Sections 1–6. The rationale is in [`specs/ARCHITECTURE.md`](specs/ARCHITECTURE.md), "Native mobile proving"; this file stays focused on exact versions and commands.
 
 ## 8. iOS toolchain
 

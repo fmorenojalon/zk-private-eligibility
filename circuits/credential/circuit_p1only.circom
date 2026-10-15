@@ -6,23 +6,23 @@ include "../merkle-baseline/template.circom";
 include "range_predicates.circom";
 
 // Phase 2 (F2.1, F2.2, F2.3 bookend). Condition A only (P1 v P2), plus the
-// always-structural P7/P8/P9 - specs/phase-2/eligibility-circuits.md §5.
+// always-structural P7/P8/P9 - specs/phase-2/eligibility-circuits.md Section 5.
 // The complexity-dial minimum bookend, not a real EU regime configuration -
 // the EU regime always needs the full 2-of-2 composition (circuit_full.circom).
 //
-// Merkle depth fixed at 20 for Phase 2's own functional testing (§2) -
+// Merkle depth fixed at 20 for Phase 2's own functional testing (Section 2) -
 // MerkleBaseline itself (circuits/merkle-baseline/template.circom) remains
 // depth-parameterized for Phase 5's sweep.
 //
 // currentEpoch is used only for P7's freshness comparison - P9's
-// nullifier deliberately excludes it (credential-protocol.md §7): epoch
+// nullifier deliberately excludes it (credential-protocol.md Section 7): epoch
 // changes system-wide on every issuance or revocation, so hashing it into
 // the nullifier would mint a fresh, unconsumed value every time *anyone's*
 // credential changes, defeating replay detection almost entirely.
 template CircuitP1Only(depth) {
-    // Credential attributes (credential-protocol.md §4.1) - all nine are
+    // Credential attributes (credential-protocol.md Section 4.1) - all nine are
     // declared regardless of which predicates this variant checks, since
-    // attr_hash always takes the full set (eligibility-circuits.md §3).
+    // attr_hash always takes the full set (eligibility-circuits.md Section 3).
     // Only income, portfolio_value, and expiry_epoch are constrained
     // against a threshold below; the rest exist here solely as attr_hash
     // inputs.
@@ -49,7 +49,7 @@ template CircuitP1Only(depth) {
     signal output nullifier;
 
     // F2.1: attr_hash = Poseidon(9 attributes), leaf = Poseidon(holder_secret,
-    // attr_hash) - credential-protocol.md §4.2.
+    // attr_hash) - credential-protocol.md Section 4.2.
     component attrHash = Poseidon(9);
     attrHash.inputs[0] <== income;
     attrHash.inputs[1] <== portfolio_value;
@@ -66,7 +66,7 @@ template CircuitP1Only(depth) {
     leafHash.inputs[1] <== attrHash.out;
 
     // condA = P1 v P2 (income >= 60000 OR portfolio_value > 100000,
-    // credential-protocol.md §5). Regulatory constants are compile-time
+    // credential-protocol.md Section 5). Regulatory constants are compile-time
     // literals, not inputs - a threshold change is a new circuit version
     // (new schema_version, new trusted setup), the same tradeoff TR-4
     // already accepts for any circuit change.
@@ -91,7 +91,7 @@ template CircuitP1Only(depth) {
 
     // P8: credential not revoked - Merkle inclusion of `leaf` against
     // validSetRoot. Reuses circuits/merkle-baseline's MerkleBaseline
-    // template as-is (eligibility-circuits.md §4).
+    // template as-is (eligibility-circuits.md Section 4).
     component p8 = MerkleBaseline(depth);
     p8.leaf <== leafHash.out;
     for (var i = 0; i < depth; i++) {
@@ -101,7 +101,7 @@ template CircuitP1Only(depth) {
     p8.root <== validSetRoot;
     p8.valid === 1;
 
-    // P9: scope-bound nullifier (credential-protocol.md §7). Always
+    // P9: scope-bound nullifier (credential-protocol.md Section 7). Always
     // computed as output, never constrained - PR-4's all-or-nothing
     // property comes from the predicates above, not this. Excludes
     // currentEpoch deliberately - see the note above CircuitP1Only.

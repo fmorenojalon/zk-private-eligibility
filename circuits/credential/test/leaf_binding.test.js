@@ -7,7 +7,7 @@ const CREDENTIAL_DIR = path.join(__dirname, "..");
 
 // Phase 2 addendum (F2.7): closes the gap where the issuer recomputing
 // attr_hash alone doesn't confirm the submitted leaf was built from it -
-// credential-protocol.md §4.3.
+// credential-protocol.md Section 4.3.
 describe("leaf_binding.circom", function () {
     this.timeout(60000);
 
@@ -69,7 +69,7 @@ describe("leaf_binding.circom", function () {
         );
     });
 
-    // Added after the nullifier fix (credential-protocol.md §7): re-issuance
+    // Added after the nullifier fix (credential-protocol.md Section 7): re-issuance
     // now depends on the issuer being able to detect a different
     // holder_secret via this circuit's secret_hash binding. A wrong
     // secret_hash - claiming a different holder_secret produced this

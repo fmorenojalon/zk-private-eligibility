@@ -6,14 +6,14 @@ include "../node_modules/circomlib/circuits/poseidon.circom";
 include "../merkle-baseline/template.circom";
 
 // Phase 2 (F2.2, P6). Indexed Merkle tree non-membership -
-// credential-protocol.md §5.3. Each leaf commits to a sorted linked-list
+// credential-protocol.md Section 5.3. Each leaf commits to a sorted linked-list
 // triple (value, nextValue, nextIndex); non-membership of
 // identityCommitment is proven by exhibiting the one leaf whose range
 // (value, nextValue) brackets it, plus a Merkle inclusion proof of that
 // leaf's hash. Adjacency is enforced by the tree root itself - nextValue
 // is part of the leaf's hashed content, not a side assumption trusted
 // separately - replacing an earlier, unsound two-independent-leaves
-// design (credential-protocol.md §5.3's own note on that correction).
+// design (credential-protocol.md Section 5.3's own note on that correction).
 //
 // 252-bit comparators, not 64 like range_predicates.circom's RangeGte/
 // RangeGt: value/nextValue/identityCommitment are full Poseidon field

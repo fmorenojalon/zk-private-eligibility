@@ -6,7 +6,7 @@ include "../node_modules/circomlib/circuits/comparators.circom";
 // Phase 1 baseline primitive (F1.4). Binary Merkle inclusion proof,
 // parameterized by depth per TR-5. Reused directly for P5/P6/P8 in
 // Phase 2 (jurisdiction/sanctions/valid-set membership,
-// specs/phase-1/protocol-spec.md §5).
+// specs/phase-1/protocol-spec.md Section 5).
 //
 // pathIndices[i] = 0 means the current node is the LEFT child at level i,
 // 1 means it is the RIGHT child. Explicitly constrained to be boolean -

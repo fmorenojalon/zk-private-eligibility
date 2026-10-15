@@ -9,11 +9,11 @@ include "indexed_nonmembership.circom";
 
 // Phase 2 (F2.1-F2.4, complexity-dial maximum). The full EU 2-of-2 regime:
 // P1-P4 threshold composition, P5/P6 (jurisdiction/sanctions membership),
-// plus the always-structural P7/P8/P9 - eligibility-circuits.md §5.
+// plus the always-structural P7/P8/P9 - eligibility-circuits.md Section 5.
 // P5/P6 are unconditional here, not optional-if-supplied: jurisdictionRoot
 // and sanctionsRoot are always public inputs to this circuit, matching
 // "included whenever jurisdictionRoot/sanctionsRoot are supplied as
-// public inputs - always, in circuit_full.circom" (§5).
+// public inputs - always, in circuit_full.circom" (Section 5).
 template CircuitFull(depth) {
     signal input income;
     signal input portfolio_value;
@@ -34,7 +34,7 @@ template CircuitFull(depth) {
     signal input jurisdictionPathIndices[depth];
     signal input jurisdictionRoot;
 
-    // P6: sanctions non-membership (credential-protocol.md §5.3). The
+    // P6: sanctions non-membership (credential-protocol.md Section 5.3). The
     // low-leaf triple bracketing identity_commitment, found off-circuit,
     // plus its own Merkle path - separate from P5/P8's paths, since it's
     // a different tree.
@@ -56,7 +56,7 @@ template CircuitFull(depth) {
     signal output nullifier;
 
     // F2.1: attr_hash = Poseidon(9 attributes), leaf = Poseidon(holder_secret,
-    // attr_hash) - credential-protocol.md §4.2.
+    // attr_hash) - credential-protocol.md Section 4.2.
     component attrHash = Poseidon(9);
     attrHash.inputs[0] <== income;
     attrHash.inputs[1] <== portfolio_value;
@@ -144,7 +144,7 @@ template CircuitFull(depth) {
     p8.valid === 1;
 
     // P9: scope-bound nullifier. Deliberately excludes currentEpoch -
-    // credential-protocol.md §7 explains why: epoch changes system-wide on
+    // credential-protocol.md Section 7 explains why: epoch changes system-wide on
     // every issuance or revocation, so hashing it into the nullifier would
     // mint a fresh, unconsumed value every time *anyone's* credential
     // changes, defeating replay detection almost entirely in practice.

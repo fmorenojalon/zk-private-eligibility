@@ -137,7 +137,7 @@ That's the whole verification flow: a proof of the baseline circuit (the committ
 
 ## Phase 3 contracts
 
-Full design rationale for all of these lives in [`specs/phase-3/verification-infrastructure.md` §3](../specs/phase-3/verification-infrastructure.md#3-f31-f32-f36--contract-interfaces) — this is just what each one does and its interface.
+Full design rationale for all of these lives in [`specs/phase-3/verification-infrastructure.md` Section 3](../specs/phase-3/verification-infrastructure.md#3-f31-f32-f36--contract-interfaces) — this is just what each one does and its interface.
 
 ### `EligibilityRegistry.sol`
 
@@ -167,7 +167,7 @@ function consumeIfUnused(uint256 nullifier) external;     // callable only by wh
 
 A full presentation is covered in [The presentation flow, end to end](#the-presentation-flow-end-to-end) below.
 
-**Why the mapping catches a replay at all.** `consumed` doesn't track "users" or "scopes" — it only ever sees one bare `uint256` and asks whether it's seen that exact number before. What makes replay detection work isn't nullifiers being unique; it's the opposite: `Poseidon(holder_secret, scope)` is a *deterministic* function with no randomness in it. The same holder presenting to the same offering always produces the exact same nullifier, every time, regardless of what epoch it happens to be — even though the surrounding Groth16 proof itself is randomized (different `pA`/`pB`/`pC` on every generation), the nullifier output is not. That determinism is the entire mechanism: without it, a replay would just look like a brand-new number, and `consumed[nullifier]` would never find a match. `epoch` is deliberately not part of this formula — `currentEpoch` changes system-wide on any holder's issuance or revocation (`verification-infrastructure.md §1`), so including it would make Alice's nullifier for one offering a different value every time epoch moved, defeating this exact determinism (`credential-protocol.md §7`).
+**Why the mapping catches a replay at all.** `consumed` doesn't track "users" or "scopes" — it only ever sees one bare `uint256` and asks whether it's seen that exact number before. What makes replay detection work isn't nullifiers being unique; it's the opposite: `Poseidon(holder_secret, scope)` is a *deterministic* function with no randomness in it. The same holder presenting to the same offering always produces the exact same nullifier, every time, regardless of what epoch it happens to be — even though the surrounding Groth16 proof itself is randomized (different `pA`/`pB`/`pC` on every generation), the nullifier output is not. That determinism is the entire mechanism: without it, a replay would just look like a brand-new number, and `consumed[nullifier]` would never find a match. `epoch` is deliberately not part of this formula — `currentEpoch` changes system-wide on any holder's issuance or revocation (`verification-infrastructure.md Section 1`), so including it would make Alice's nullifier for one offering a different value every time epoch moved, defeating this exact determinism (`credential-protocol.md Section 7`).
 
 ### `OfferingPolicy.sol`
 
@@ -242,7 +242,7 @@ forge create src/OfferingPolicy.sol:OfferingPolicy --rpc-url $RPC --private-key 
 
 Deployment is deterministic on a fresh chain (same keys, same nonce sequence), so these four addresses will reproduce exactly on a clean `anvil` restart following these same steps.
 
-**Wire `NullifierRegistry` to `OfferingPolicy`** — must be sent by the issuer key specifically, since `deployer` was captured as `msg.sender` when `NullifierRegistry` was deployed (`specs/phase-3/verification-infrastructure.md §3.2`):
+**Wire `NullifierRegistry` to `OfferingPolicy`** — must be sent by the issuer key specifically, since `deployer` was captured as `msg.sender` when `NullifierRegistry` was deployed (`specs/phase-3/verification-infrastructure.md Section 3.2`):
 
 ```sh
 REGISTRY=0x5FbDB2315678afecb367f032d93F642f64180aa3
@@ -254,11 +254,11 @@ cast call $NULLIFIERS "authorized()(address)" --rpc-url $RPC
 # -> 0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
 ```
 
-**Issuer sets up the registry state**, using the real values baked into Alice's real fixture proof (`circuits/credential/public_full.json` — `[nullifier, jurisdictionRoot, sanctionsRoot, validSetRoot, currentEpoch, scope]`, verified in `specs/phase-3/verification-infrastructure.md §3.3`):
+**Issuer sets up the registry state**, using the real values baked into Alice's real fixture proof (`circuits/credential/public_full.json` — `[nullifier, jurisdictionRoot, sanctionsRoot, validSetRoot, currentEpoch, scope]`, verified in `specs/phase-3/verification-infrastructure.md Section 3.3`):
 
 ```sh
 JROOT=0x0a85c9dc3c9b7d1a4b73627f0ac4eedfb2a11a20cf5194bbb0e089384ee3f3ff
-SROOT=0x0b9fa49e73ac3e867872fcbe504c1a93652e83a030af877ec38d2fd7a9b51af3
+SROOT=0x019bd66abc02866ee9621d2377848d93a98a7f17f1fcc7ec337ece1e5368a21a
 VROOT=0x13da7c1d32569bf2a92e1aea89a0a85a9397cfc47a581edffe2fe55db5197fb2
 
 cast send $REGISTRY "approveJurisdictionRoot(bytes32)" $JROOT --rpc-url $RPC --private-key $ISSUER_KEY
@@ -273,7 +273,7 @@ cast send $REGISTRY "publishValidSetRoot(bytes32)" $VROOT --rpc-url $RPC --priva
 cast send $REGISTRY "publishSanctionsRoot(bytes32)" $SROOT --rpc-url $RPC --private-key $ISSUER_KEY
 ```
 
-**Platform registers an offering** against the issuer-approved `jurisdictionRoot` (`registerOffering` reverts on anything else — `specs/phase-3/verification-infrastructure.md §1`/§3.3):
+**Platform registers an offering** against the issuer-approved `jurisdictionRoot` (`registerOffering` reverts on anything else — `specs/phase-3/verification-infrastructure.md Section 1`/Section 3.3):
 
 ```sh
 cast send $POLICY "registerOffering(bytes32)" $JROOT --rpc-url $RPC --private-key $PLATFORM_KEY
@@ -287,10 +287,10 @@ cast call $POLICY "nextOfferingId()(uint256)" --rpc-url $RPC
 cast send $POLICY \
   "presentEligibility(uint256,uint256[2],uint256[2][2],uint256[2],uint256[6])(bool)" \
   0 \
-  "[0x060fc32807bc7e7e464ebd95af36e153c9e0d5b5ead3dae26dc8d11a2cf683ab,0x2b99305a8a98c1def6bdc1a0c49f2a2a11babbf586a9064828fb02f450d54c55]" \
-  "[[0x1ca1a01f24aac569c0a1104eb1dc719240aa9691f5f529b8192009afe2994fa0,0x251082d516d29c78bf63cd5c6859fccf74a4851da0e95af110284c933489d437],[0x02881368a6989192d09fb52c6af353a84b09d7dba8c3604ff5ab7ba5d05687ac,0x2a0b692d1c2c3d2f8a8cb6e6df86e93eb812f956621dc5ae40c38dc2feb5c968]]" \
-  "[0x06af8d2f8363b3a6807a78b14a565634ab8dea65b1e7f001f2908459a40cb445,0x03b2d48ee0b84cfab0003f71ca58a00b0f2b4e19a57c592f81c007b4b95bbb48]" \
-  "[0x1286f39bcb5e397777332dbfa971c100c51f94b406ab03e48509a11b6a259100,0x0a85c9dc3c9b7d1a4b73627f0ac4eedfb2a11a20cf5194bbb0e089384ee3f3ff,0x0b9fa49e73ac3e867872fcbe504c1a93652e83a030af877ec38d2fd7a9b51af3,0x13da7c1d32569bf2a92e1aea89a0a85a9397cfc47a581edffe2fe55db5197fb2,0x0000000000000000000000000000000000000000000000000000000000000005,0x0000000000000000000000000000000000000000000000000000000000000000]" \
+  "[0x24861ea70418a9050775457a21f51154d4f3e7ab973b855a5f6dfd7804c1c772,0x1f5dc70ca8cb58d6d12d235842975150405ed7a682c6e45271acbe9b973ed0e1]" \
+  "[[0x2160dee2f49cab55e47de064e66c559d7a4dc369f6fa7e509c2ac87a85bae199,0x2f82a2da8da367e173f0487c6a5dab9f9c601d42d8cbaae6abbf731d8bf61b1c],[0x25570d11eb2bec7548e7d5fbe5e4f8a8cd6dfae79f5b5b81dd6e3dbbb5e753a2,0x0d4f415ca39939d25a70fdc4b7ba3b5b52fba5460bbffbae46499be87c2ca3cf]]" \
+  "[0x164f3788a330c007d4f10691b981d15648af712ba4cfcba723921e1feb6c2fb1,0x0f28c1ff33e619d386c40c1b2aba17a7a66ab787b106a829c583b5ad43c94654]" \
+  "[0x08d54883e989bc5094454a9625a15d0abe3b96de641f26cec85f3eef7bef8bab,0x0a85c9dc3c9b7d1a4b73627f0ac4eedfb2a11a20cf5194bbb0e089384ee3f3ff,0x019bd66abc02866ee9621d2377848d93a98a7f17f1fcc7ec337ece1e5368a21a,0x13da7c1d32569bf2a92e1aea89a0a85a9397cfc47a581edffe2fe55db5197fb2,0x0000000000000000000000000000000000000000000000000000000000000005,0x0000000000000000000000000000000000000000000000000000000000000000]" \
   --rpc-url $RPC --private-key $PLATFORM_KEY
 # status: 1 (success) - emits NullifierConsumed and EligibilityGranted(offeringId=0, nullifier=...)
 ```

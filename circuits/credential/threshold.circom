@@ -5,9 +5,9 @@ include "../node_modules/circomlib/circuits/comparators.circom";
 // Phase 2 (F2.4). Generic M-of-N threshold: given N boolean signals,
 // output 1 iff at least M are true. A summation constraint
 // (sum(conditions) >= M), not an enumerated OR-of-ANDs -
-// credential-protocol.md §5.2. Reinstating a third EU sub-condition
+// credential-protocol.md Section 5.2. Reinstating a third EU sub-condition
 // later is instantiating this with N=3 instead of N=2, a configuration
-// change rather than a redesign (PRD post-MVP extension #7) - the
+// change rather than a redesign (F2.4) - the
 // standalone ThresholdOfN(2,3) test in test/eligibility.test.js exists
 // specifically to demonstrate that, not just assert it.
 //

@@ -3,12 +3,17 @@ const circomlibjs = require("circomlibjs");
 const DEPTH = 20;
 const SCHEMA_VERSION = 1n;
 
+// Fixed padding values for the sanctions tree: k * 2^251, k = 1..6, so that
+// no gap between consecutive values reaches 2^252 (the comparator range of
+// IndexedNonMembership) - credential-protocol.md Section 5.3.
+const SANCTIONS_PADDING = Array.from({ length: 6 }, (_, i) => BigInt(i + 1) * 2n ** 251n);
+
 // Sparse Merkle tree over a fixed depth, defaulting every unset leaf to
 // `emptyLeaf` (0n) - the standard "zero-hash" construction, so we never
 // have to materialize 2^depth leaves to get a valid root/path for the
-// handful of real ones under test (credential-protocol.md §6's
+// handful of real ones under test (credential-protocol.md Section 6's
 // valid-set tree, at Phase 2's fixed test depth - eligibility-circuits.md
-// §2).
+// Section 2).
 class SparseMerkleTree {
     constructor(depth, hash2, emptyLeaf = 0n) {
         this.depth = depth;
@@ -81,7 +86,7 @@ async function buildFixtures() {
     const hash9 = (arr) => toObj(poseidon(arr));
 
     // secret_hash = Poseidon(holder_secret) - leaf_binding.circom, added
-    // after the nullifier fix (credential-protocol.md §7) so the issuer
+    // after the nullifier fix (credential-protocol.md Section 7) so the issuer
     // can detect re-issuance with a different holder_secret without ever
     // learning the secret itself.
     function secretHashOf(holderSecret) {
@@ -89,7 +94,7 @@ async function buildFixtures() {
     }
 
     // attr_hash = Poseidon(9 attributes), leaf = Poseidon(holder_secret,
-    // attr_hash) - credential-protocol.md §4.2. Attribute order matches
+    // attr_hash) - credential-protocol.md Section 4.2. Attribute order matches
     // circuit_p1only.circom's attrHash.inputs[0..8] wiring exactly.
     function attrHashOf(a) {
         return hash9([
@@ -110,7 +115,7 @@ async function buildFixtures() {
     }
 
     const CURRENT_EPOCH = 5n;
-    const SCOPE = 0n; // scope = offeringId directly, no hashing - verification-infrastructure.md §1. 0 = "Offering A"
+    const SCOPE = 0n; // scope = offeringId directly, no hashing - verification-infrastructure.md Section 1. 0 = "Offering A"
     const SCOPE_OFFERING_B = 1n; // a second, legitimately different offering - "Offering B"
 
     const ALICE = {
@@ -164,7 +169,7 @@ async function buildFixtures() {
 
     // Jurisdiction allowlist: a plain Merkle tree whose leaves are the
     // allowed ISO 3166-1 numeric codes directly - no further hashing
-    // needed for a single small integer (credential-protocol.md §5, P5).
+    // needed for a single small integer (credential-protocol.md Section 5, P5).
     const ALLOWED_JURISDICTIONS = [724n, 276n, 372n]; // Spain, Germany, Ireland - placeholders
     const jurisdictionTree = new SparseMerkleTree(DEPTH, hash2);
     ALLOWED_JURISDICTIONS.forEach((code, idx) => jurisdictionTree.setLeaf(idx, code));
@@ -175,23 +180,30 @@ async function buildFixtures() {
     BOB.jurisdictionProof = jurisdictionTree.proof(jurisdictionIndexOf(BOB.attrs.jurisdiction_code));
 
     // Sanctions list: indexed Merkle tree with embedded next-pointers,
-    // per credential-protocol.md §5.3 / eligibility-circuits.md §7's
-    // "Sanctions list fixture" - 10 real entries plus the two implicit
-    // bounds (a value=0 leaf below the smallest entry, and the largest
-    // entry's own nextValue left at p-1 rather than pointing elsewhere).
-    // No dynamic insertion logic - built once, directly, as the spec
-    // describes.
+    // per credential-protocol.md Section 5.3 / eligibility-circuits.md Section 7's
+    // "Sanctions list fixture" - 10 real entries, the SANCTIONS_PADDING
+    // entries (see below), and the two implicit bounds (a value=0 leaf
+    // below the smallest entry, and the largest entry's own nextValue
+    // left at p-1 rather than pointing elsewhere). No dynamic insertion
+    // logic - built once, directly, as the spec describes.
     const FIELD_MAX = F.p - 1n;
     const sortedSanctionedValues = Array.from({ length: 10 }, (_, i) =>
         hash2(777n, BigInt(i))
     ).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 
-    function buildIndexedTree(depth, values) {
-        // leaves[0] is the value=0 sentinel; leaves[1..N] are the real
-        // entries, each linking to the next via nextIndex; the last real
-        // entry's nextValue is FIELD_MAX (no further insertion happened
-        // above it).
-        const leaves = [{ value: 0n, nextValue: values[0], nextIndex: 1 }];
+    // The non-membership circuit's comparators are 252-bit, so they are only
+    // correct when the compared values are within 2^252 of each other
+    // (credential-protocol.md Section 5.3). Padding entries at k * 2^251 keep every
+    // gap between consecutive tree values below 2^252, whatever the real
+    // sanctions list looks like (empty, tiny, or unlucky).
+    function buildIndexedTree(depth, realValues, { padding = true } = {}) {
+        const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+        const values = (padding ? [...SANCTIONS_PADDING, ...realValues] : [...realValues]).sort(cmp);
+        // leaves[0] is the value=0 sentinel; leaves[1..N] are the entries
+        // (padding included), each linking to the next via nextIndex; the
+        // last entry's nextValue is FIELD_MAX (no further insertion
+        // happened above it).
+        const leaves = [{ value: 0n, nextValue: values.length ? values[0] : FIELD_MAX, nextIndex: values.length ? 1 : 0 }];
         for (let i = 0; i < values.length; i++) {
             const isLast = i === values.length - 1;
             leaves.push({
@@ -211,7 +223,7 @@ async function buildFixtures() {
 
     // The one leaf whose (value, nextValue) range brackets `target` -
     // the low-leaf lookup a holder does off-circuit (credential-protocol.md
-    // §5.3: "found off-circuit by the holder; the circuit only checks
+    // Section 5.3: "found off-circuit by the holder; the circuit only checks
     // the relation holds").
     function findLowLeafIndex(leaves, target) {
         const idx = leaves.findIndex((l) => l.value < target && target < l.nextValue);
@@ -260,7 +272,9 @@ async function buildFixtures() {
         sortedSanctionedValues,
         sanctions,
         sanctionsProofFor,
+        buildIndexedTree,
+        findLowLeafIndex,
     };
 }
 
-module.exports = { buildFixtures, SparseMerkleTree, DEPTH };
+module.exports = { buildFixtures, SparseMerkleTree, DEPTH, SANCTIONS_PADDING };

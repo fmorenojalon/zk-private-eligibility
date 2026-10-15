@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 import {Test} from "forge-std/Test.sol";
 import {NullifierRegistry} from "../src/NullifierRegistry.sol";
 
-// specs/phase-3/verification-infrastructure.md §7.2. Deployed standalone
+// specs/phase-3/verification-infrastructure.md Section 7.2. Deployed standalone
 // (not through OfferingPolicy) - this test contract stands in as the
-// "authorized" caller, exactly as §3.2 describes for the real deployment.
+// "authorized" caller, exactly as Section 3.2 describes for the real deployment.
 contract NullifierRegistryTest is Test {
     NullifierRegistry internal nullifiers;
     address internal stranger = address(0xBAD);

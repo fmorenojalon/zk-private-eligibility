@@ -1,6 +1,6 @@
 // Generates input_full_offeringB.json - identical to Alice's real input_full.json
 // except scope = SCOPE_OFFERING_B (1) instead of SCOPE (0), for Phase 3's
-// verification-infrastructure.md §7 test case 19 (a second, legitimately
+// verification-infrastructure.md Section 7 test case 19 (a second, legitimately
 // different offering using the same credential).
 const fs = require("fs");
 const path = require("path");

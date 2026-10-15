@@ -5,7 +5,7 @@ const { buildFixtures } = require("./fixtures");
 
 const CREDENTIAL_DIR = path.join(__dirname, "..");
 
-// Sub-phase 1 (specs/phase-2/eligibility-circuits.md §2): isolated tests
+// Sub-phase 1 (specs/phase-2/eligibility-circuits.md Section 2): isolated tests
 // for range_predicates.circom and threshold.circom, before any composite
 // circuit exists. circom_tester auto-generates the `component main`
 // wrapper for a named template when the target file has none - no
@@ -99,12 +99,12 @@ describe("threshold.circom", function () {
         });
     });
 
-    // Test matrix case 14 (specs/phase-2/eligibility-circuits.md §7):
-    // substantiates the PRD's genericity claim (post-MVP extension #7)
+    // Test matrix case 14 (specs/phase-2/eligibility-circuits.md Section 7):
+    // substantiates the PRD's genericity claim (F2.4)
     // that reinstating a third condition is a configuration change
     // (N=3), not a redesign - this is the demonstration, not just the
     // assertion.
-    describe("ThresholdOfN(2, 3) - genericity claim (PRD post-MVP extension #7)", () => {
+    describe("ThresholdOfN(2, 3) - genericity claim (F2.4)", () => {
         let circuit;
         before(async () => {
             circuit = await testerFor("threshold.circom", "ThresholdOfN", [2, 3]);
@@ -136,7 +136,7 @@ describe("threshold.circom", function () {
     });
 });
 
-// Sub-phase 2 (specs/phase-2/eligibility-circuits.md §5): the first
+// Sub-phase 2 (specs/phase-2/eligibility-circuits.md Section 5): the first
 // composite circuit - condA (P1 v P2) plus the always-structural
 // P7/P8/P9. Test matrix cases 15-16.
 describe("circuit_p1only.circom", function () {
@@ -194,7 +194,7 @@ describe("circuit_p1only.circom", function () {
     });
 });
 
-// Sub-phase 3 (specs/phase-2/eligibility-circuits.md §4, P6): the one
+// Sub-phase 3 (specs/phase-2/eligibility-circuits.md Section 4, P6): the one
 // genuinely new construction, tested standalone before any composite
 // circuit wires it in - no `=== 1` self-enforcement here, matching
 // range_predicates.circom's convention of outputting a boolean and
@@ -249,7 +249,7 @@ describe("indexed_nonmembership.circom", function () {
     });
 });
 
-// Sub-phase 4a (specs/phase-2/eligibility-circuits.md §5): the complexity-
+// Sub-phase 4a (specs/phase-2/eligibility-circuits.md Section 5): the complexity-
 // dial midpoint - full P1-P4, no P5/P6. Test matrix cases 17-18.
 describe("circuit_condab.circom", function () {
     this.timeout(60000);
@@ -294,7 +294,7 @@ describe("circuit_condab.circom", function () {
     });
 });
 
-// Sub-phase 4b (specs/phase-2/eligibility-circuits.md §5): the complexity-
+// Sub-phase 4b (specs/phase-2/eligibility-circuits.md Section 5): the complexity-
 // dial maximum - the full EU 2-of-2 regime, P1-P9.
 // Test matrix cases 1-13, 19-21 run against this circuit.
 describe("circuit_full.circom", function () {

@@ -3,9 +3,9 @@
 //  MoproApp
 //
 //  Phase 1 (F1.1) toolchain smoke-test app: proves the poseidon-baseline
-//  circuit (specs/phase-1/toolchain-baseline.md §6) natively on-device.
+//  circuit (specs/phase-1/toolchain-baseline.md Section 6) natively on-device.
 //  Also F1.3: emits a structured measurement record per run
-//  (specs/phase-1/measurement-pipeline.md §2) and syncs it to the
+//  (specs/phase-1/measurement-pipeline.md Section 2) and syncs it to the
 //  measurement collector.
 //
 import SwiftUI

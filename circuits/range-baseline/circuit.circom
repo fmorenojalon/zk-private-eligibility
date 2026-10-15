@@ -4,7 +4,7 @@ include "../node_modules/circomlib/circuits/comparators.circom";
 
 // Phase 1 baseline primitive (F1.4). Matches the range-comparison shape
 // used by P1/P2 and the retired investment-ceiling predicate (income,
-// portfolio, net-worth thresholds, credential-protocol.md §5) - a single
+// portfolio, net-worth thresholds, credential-protocol.md Section 5) - a single
 // 64-bit GreaterEqThan comparison.
 template RangeBaseline() {
     signal input value;

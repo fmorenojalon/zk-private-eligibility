@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {Test} from "forge-std/Test.sol";
 import {EligibilityRegistry} from "../src/EligibilityRegistry.sol";
 
-// specs/phase-3/verification-infrastructure.md §7.1
+// specs/phase-3/verification-infrastructure.md Section 7.1
 contract EligibilityRegistryTest is Test {
     EligibilityRegistry internal registry;
     address internal issuer = address(0xE55);

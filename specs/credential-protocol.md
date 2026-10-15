@@ -1,17 +1,15 @@
 # Credential Protocol
 
-**Delivered by:** F1.5 (Phase 1) · **Feeds:** Phase 2 (F2.1–F2.6) circuit implementation, and every later phase that touches the credential, predicates, or nullifier
-**Status: satisfied**, with one number since drifted. Every other Phase 1 requirement was built directly against this document without needing further design decisions — F1.1/F1.4's `poseidon-baseline` circuits implement the arity-2/arity-10 commitment structure from §4.2 as it stood at the time (and [BASELINE_RESULTS.md](../circuits/BASELINE_RESULTS.md) empirically confirms the arity-cost reasoning behind choosing a single Poseidon call over a 5+5-split design, which still holds); F1.4's `merkle-baseline` implements the boolean-constrained inclusion construction §5.3 calls for; F1.2's Groth16Verifier and F1.4's `eddsa-baseline` reflect §3's membership-only attestation decision (no in-circuit signature check, but the primitive still measured standalone). §4.2's schema has since dropped one attribute (`net_worth`, alongside the investment-ceiling predicate's retirement — §5), making the real commitment arity 9, not 10 — Phase 1's arity-10 baseline is no longer an exact hit for what Phase 2 implements, though it remains the closest existing reference point (§4.2 has the detail). Nothing else has needed revision since the arity fix ([git history](../TOOLCHAIN.md), commit `0d010fe`).
-
-> This document is the design contract for the credential, its predicates, the epoch/revocation model, the nullifier, and the threat model. Per the Phase 1 acceptance criterion, it must be complete enough to implement Phase 2 against without further design decisions. Items that are genuinely deferred are called out explicitly in §9, not left implicit.
+The design contract for the credential, its predicates, the epoch and revocation model, the nullifier, and the threat model.
 
 ---
 
 ## 1. Scope
 
-Covers the full protocol design — not just the primitives Phase 1 measures. Phase 2 implements what's specified here; Phase 1 only builds standalone baseline circuits for the four primitives in [phase-1/toolchain-baseline.md](phase-1/toolchain-baseline.md).
-
-Reflects the PRD v4.1 scope: EU regime only, 2-of-2 threshold (P4), predicates P1–P9, single-tree credential (§3.1), no in-circuit issuer-signature verification (decided below). Scoped to accredited/sophisticated investors only — `PRD.md §12` has the reasoning.
+This protocol covers:
+- the EU sophisticated-investor regime only (PRD Section 2.2), as a 2-of-2 threshold (P4) over the predicates P1–P9;
+- a credential that is one leaf in a single tree of valid credentials (PRD Section 3.1);
+- issuer attestation by tree membership, with no issuer signature checked inside the circuit (Section 3, Issuer Attestation).
 
 ---
 
@@ -19,26 +17,24 @@ Reflects the PRD v4.1 scope: EU regime only, 2-of-2 threshold (P4), predicates P
 
 | Primitive | Choice | Rationale |
 | --- | --- | --- |
-| Field | BN254 scalar field (`Fr`) | circom/Groth16 default (TR-1); every attribute, commitment, and nullifier value is a field element |
-| Proof system | Groth16 over BN254 | TR-1 |
-| Hash | Poseidon | TR-2; used for commitments, Merkle tree, and nullifier — one hash family everywhere |
-| Signature | EdDSA over Baby Jubjub, Poseidon-based variant (circomlib `EdDSAPoseidonVerifier`) | *Retired* — measured standalone in Phase 1 (F1.4) but not used anywhere in the deployed protocol; see §3 below |
-| Set membership | Merkle inclusion (Poseidon tree) | TR-3 |
-| Set non-membership | Indexed/sorted Merkle tree with adjacency proof | TR-3; construction detailed in §5.3 |
+| Field | BN254 scalar field (`Fr`) | Native to circom/Groth16; every attribute, commitment and nullifier is one field element (TR-1) |
+| Proof system | Groth16 over BN254 | Smallest proofs and cheapest on-chain verification (TR-1) |
+| Hash | Poseidon | Cheap inside circuits; one hash family for commitments, Merkle trees and nullifiers (TR-2) |
+| Set membership | Merkle inclusion (Poseidon tree) | One root on-chain, hidden member identity, revocation by root rotation (TR-3) |
+| Set non-membership | Indexed Merkle tree with adjacency proof | Constant-size proofs the prover cannot falsify; construction in Sec. 5.3, Non-Membership Construction (TR-3) |
+| Root authenticity | Issuer's on-chain account, enforced by the registry contract | Only the issuer can publish roots, so no signature is needed; see Sec. 3, Issuer Attestation (TR-10) |
 
 ---
 
-## 3. Issuer Attestation: Membership-Only (Design Decision)
+## 3. Issuer Attestation: Membership-Only
 
-**Decision:** the eligibility circuit does **not** verify an EdDSA signature in-circuit. Merkle membership of a credential's leaf in the issuer's valid-set tree *is* the attestation.
+**Decision:** the eligibility circuit does not verify an issuer signature. Merkle membership of a credential's leaf in the issuer's valid-set tree is the attestation.
 
-**Why this is sufficient:** under §3.1's single tree, full-attribute leaves, a leaf can only enter the tree through the issuer's own service (Phase 3, `verification-infrastructure.md §4.1`), and only the issuer's on-chain address can publish the root that commits to it — `EligibilityRegistry` accepts root updates only from that address (Phase 3, TR-10). Tree membership is therefore already proof that the issuer inserted this exact leaf; an additional in-circuit signature check over the same commitment would be redundant — the actual security boundary is the issuer's exclusive control of the tree: off-chain through its own service (L1), and on-chain through root-publication access control (TR-10), not an in-circuit check.
+**Why this is sufficient:** a leaf can only enter the tree through the issuer's own service, and only the issuer's on-chain address can publish the root that commits to it (TR-10). Membership therefore already shows the issuer inserted this exact leaf, and a signature over the same commitment would be redundant. The security boundary is the issuer's exclusive control of the tree, off-chain through its service (L1) and on-chain through root-publication access control.
 
-**Issuer EdDSA signatures are retired, not relocated.** Root publication relies solely on the access-control mechanism justified above — the `EligibilityRegistry` contract (Phase 3, TR-10) accepts root updates only from the issuer's address. A signature would add one real property access control alone doesn't (independent verifiability without trusting the registry contract's own code — PRD §11 L3), but this PoC's threat model doesn't depend on it, since issuer honesty is already assumed (L1). Cut for that reason, not because it's technically infeasible — `circuits/eddsa-baseline` still exists as a measured Phase 1 baseline, just unused by the deployed protocol.
+**What a signature would add:** independent verifiability of roots without trusting the registry contract's code (L3). The PoC's trust model (L1) doesn't need it, while a multi-operator deployment would (PRD Section 12).
 
-**Cost consequence:** the eligibility circuit avoids the most expensive of the four F1.4 baseline primitives entirely. The EdDSA baseline circuit is still built and measured in Phase 1 (F1.4 requires it as a standalone reference number), but it does not appear in the Phase 2 credential circuit's constraint count.
-
-**Revisit trigger:** if a future requirement needs per-credential non-repudiation independent of registry access control (e.g., the issuer's registry key is later shared across multiple write paths), this decision should be revisited — noted here so the reasoning survives.
+**Cost:** the circuit avoids EdDSA verification, about 8,000 constraints in the Phase 1 baseline, roughly a depth-16 Merkle inclusion.
 
 ---
 
@@ -54,18 +50,18 @@ Reflects the PRD v4.1 scope: EU regime only, 2-of-2 threshold (P4), predicates P
 | `executive_months` | uint | P3 | months as executive at a qualifying entity |
 | `jurisdiction_code` | uint (ISO 3166-1 numeric) | P5 | |
 | `identity_commitment` | field element | P6 | `Poseidon(kyc_identity_hash, issuer_salt)`, computed at issuance; the value checked against the sanctions non-membership tree — kept separate from the KYC identity itself so the credential never carries the raw identity |
-| `issued_epoch` | uint | — | epoch at issuance |
-| `expiry_epoch` | uint | P7 | |
+| `issued_epoch` | uint | — | epoch when the holder's record was loaded or last edited |
+| `expiry_epoch` | uint | P7 | `issued_epoch + 6` in this PoC |
 | `schema_version` | uint | — | constant per circuit version, allows future schema migration without ambiguity |
-| `holder_secret` | field element | P8, P9 | generated on-device (PR-5); **never a circuit input to any other party's process, always private** |
+| `holder_secret` | field element | P8, P9 | generated and kept on the holder's device, always a private input (PR-5) |
 
-**`issued_epoch` and `expiry_epoch`: who sets them, and relative to what.** Both are set by the operator when the holder's record is loaded or last edited (`verification-infrastructure.md §4.2`) — before the holder has even generated a proof, let alone before the leaf is inserted. `issued_epoch` records `currentEpoch` at that moment, which is necessarily at least one epoch behind the leaf's actual landing epoch, since insertion itself is what advances `currentEpoch` (`verification-infrastructure.md §1`). No predicate reads `issued_epoch` (§5's table), so this is a recordkeeping imprecision, not a correctness gap.
+The first nine fields are issuer-attested (the `attr_hash` inputs); `holder_secret` is generated by the holder and enters only through `leaf` (Section 4.2, Commitment Structure).
 
-`expiry_epoch` is different: P7 checks it directly. As `L4` already establishes, epochs are an event-count, not a clock — they advance on *any* holder's issuance or revocation, system-wide, at no fixed cadence, so no choice of margin here tracks real elapsed time; a margin that lasts months in a quiet system could be exhausted in minutes in a busy one. This PoC accepts that mismatch rather than solving it (the real fix — timestamp-based expiry, cross-checked against `block.timestamp` the same way `§5.4` handles every other public input — is named but not built, `PRD.md` L4); `expiry_epoch` exists here to make P7 demonstrable, not to bound a credential's real-world validity period. Issuer policy for this PoC: `expiry_epoch = issued_epoch + 6`, a fixed margin chosen to showcase the condition, not a duration guarantee.
+**`issued_epoch` and `expiry_epoch`.** The operator sets both when the holder's record is loaded or last edited (`verification-infrastructure.md Section 4.2`), before the holder generates a proof. `issued_epoch` is therefore at least one epoch behind the leaf's landing epoch, since insertion advances the epoch; no predicate reads it, so the gap is harmless. P7 checks `expiry_epoch`. Because epochs count events, not time (L4), the margin is not a duration: this PoC uses `expiry_epoch = issued_epoch + 6`, a fixed margin chosen to showcase the condition.
 
 ### 4.2 Commitment Structure
 
-Two steps, not one flat hash — because the issuer and the holder each compute a different part, and neither can compute the other's part:
+Two steps rather than one flat hash, because the issuer and the holder each compute one part:
 
 ```
 attr_hash = Poseidon(income, portfolio_value, financial_sector_months, executive_months,
@@ -74,42 +70,48 @@ attr_hash = Poseidon(income, portfolio_value, financial_sector_months, executive
 leaf      = Poseidon(holder_secret, attr_hash)
 ```
 
-`attr_hash` is a single 9-input Poseidon call — circomlib (pinned commit, [phase-1/toolchain-baseline.md §2](phase-1/toolchain-baseline.md#2-pinned-toolchain-versions)) ships reference-derived round constants for Poseidon state widths up to `t=17` (i.e. up to 16 inputs), so arity 9 is exactly as standard and audited as arity 2; there is no benefit to splitting it into smaller groups, and doing so would cost more constraints (each additional Poseidon call pays its own full-round overhead) for no robustness gain. (F1.4's own Poseidon baseline measured arity 10 specifically, back when the schema carried 10 attributes — arity 9 is one narrower, using circomlib's adjacent `t=10` parameter set rather than the exact `t=11` configuration that baseline exercised; the arity-cost reasoning still holds; see the status line above for what this means for that baseline's "exact match" claim.)
+`attr_hash` is a single 9-input Poseidon call. circomlib supports up to 16 inputs, and one call costs fewer constraints than splitting the attributes across several (each extra call pays its own full-round overhead).
 
-The two-*step* structure itself (`attr_hash`, then `leaf`) is essential, not arity-driven: at issuance the issuer is the *source* of the attribute values — its own authoritative records, not a holder's self-reported claims (Flow 1) — and computes `attr_hash` from them directly, sending it to the holder alongside the raw values. Only the holder, who alone holds `holder_secret`, can compute `leaf` — per PR-5 the issuer must never learn it. The holder computes `leaf` locally and sends the issuer the opaque value (a hash, not a secret preimage) for insertion into the tree. Computing `attr_hash` tells the issuer what the value *is* — it does not, by itself, confirm that the `leaf` the holder actually submits back was built from that same value rather than a substituted one; §4.3 closes that gap.
-
-`leaf` is what the issuer inserts into the valid-set tree (§5).
+The issuer is the source of the attribute values (Flow 1), so it computes `attr_hash` and sends it with the raw values. Only the holder, who alone holds `holder_secret` (PR-5), can compute `leaf`, and sends it back for insertion into the valid-set tree. `attr_hash` alone doesn't show that the submitted `leaf` was built from it; Section 4.3 (Leaf-Binding Proof) closes that gap.
 
 ### 4.3 Leaf-Binding Proof (F2.7)
 
-**The gap.** The issuer computing `attr_hash` from its own records (§4.2) does not, on its own, guarantee anything about the `leaf` the holder actually hands back for insertion. `leaf = Poseidon(holder_secret, attr_hash)`, and the issuer never learns `holder_secret` (PR-5) — so it has no way to check that equation directly. A dishonest holder could receive one `attr_hash` from the issuer, then compute `leaf` from a *different*, fabricated value, and the issuer would insert it none the wiser. Every later eligibility proof against that leaf would then honestly — and correctly — prove properties of the fabricated values, since the eligibility circuit has no way to know they were never the values the issuer actually attested. This is a holder-side soundness gap, not an issuer-trust question — it exists even when the issuer behaves correctly, and is therefore not excused by L1 (PRD §11), which is about issuer honesty, not this.
+The proof makes two bindings: the leaf to the attested attributes (below), and the leaf's secret to the holder's record at the issuer (Section 4.3.1, `secret_hash`).
 
-**The fix.** Alongside `leaf`, the holder generates a small proof: *"I know a `holder_secret` such that `Poseidon(holder_secret, attr_hash) = leaf`,"* where `attr_hash` is a public input fixed to the exact value the issuer computed and sent, and `leaf` is the value being submitted for insertion. The issuer verifies this proof against the same `attr_hash` it computed in Flow 1, before inserting `leaf` into the tree. This is cryptographic assurance that the leaf is bound to the attested data, without the issuer ever learning `holder_secret` — closing the gap without touching PR-5.
+**The gap.** The issuer computes `attr_hash` from its own records (Section 4.2, Commitment Structure), but it never learns `holder_secret` (PR-5). It therefore cannot check that the `leaf` a holder returns really equals `Poseidon(holder_secret, attr_hash)`. A dishonest holder could receive one `attr_hash`, build `leaf` from different, fabricated values, and the issuer would insert it without noticing. Every later eligibility proof against that leaf would then correctly prove properties of the fabricated values, because the eligibility circuit has no way to know they were never the values the issuer attested.
 
-**Cost:** the `leaf = Poseidon(holder_secret, attr_hash)` binding above is exactly `circuits/poseidon-baseline`'s arity-2 circuit, already built and measured in Phase 1 (517 constraints, sub-second desktop proving — `BASELINE_RESULTS.md`), with the output forced equal to the public `leaf` instead of exposed freely. No new cryptographic construction — see `circuits/credential/leaf_binding.circom` for the implementation; §4.3.1 below adds a second binding on top of it, bringing the whole circuit to 932 constraints (`PHASE2_RESULTS.md`).
+This is a holder-side soundness gap, not an issuer-trust question. It exists even when the issuer behaves correctly, so L1, which is about issuer honesty, does not cover it.
 
-**Verified off-chain, not on-chain:** issuance already happens over local HTTP (PRD §9.3), not on-chain, so the issuer verifies this proof itself (`snarkjs groth16 verify`) as part of accepting an issuance request — no gas cost, no on-chain verifier needed for this step.
+**The fix.** Alongside `leaf`, the holder generates a small proof: *"I know a `holder_secret` such that `Poseidon(holder_secret, attr_hash) = leaf`."* Here `attr_hash` is a public input fixed to the exact value the issuer computed and sent, and `leaf` is the value submitted for insertion. The issuer verifies the proof against the `attr_hash` it computed in Flow 1 before inserting `leaf`. The leaf is then cryptographically bound to the attested data, and the issuer still never learns `holder_secret` (PR-5).
+
+**Cost:** the binding is `circuits/poseidon-baseline`'s arity-2 circuit, already built and measured in Phase 1 (517 constraints, sub-second desktop proving; `BASELINE_RESULTS.md`), with its output forced equal to the public `leaf` instead of exposed freely. It introduces no new cryptographic construction. With the `secret_hash` binding of Section 4.3.1 on top, the whole circuit has 932 constraints (`PHASE2_RESULTS.md`). Implementation: `circuits/credential/leaf_binding.circom`.
+
+**Verified off-chain:** issuance runs over local HTTP (PRD Section 9.3), so the issuer verifies this proof itself (`snarkjs groth16 verify`) as part of accepting an issuance request. This costs no gas and needs no on-chain verifier.
 
 ### 4.3.1 `secret_hash` — Binding Re-Issuance to the Original Secret
 
-**The gap this closes.** `nullifier = Poseidon(holder_secret, scope)` (§7) only prevents replay if the *same* `holder_secret` is used for every presentation to a given offering. Nothing in Flow 1 stops a holder from re-running it with a freshly-generated `holder_secret` (`PRD.md` Flow 6) — the issuer never learns the secret either way (PR-5), so it has no way to tell a genuine re-issuance from a holder quietly resetting their own nullifier space. This is a self-service route around replay detection that has nothing to do with `epoch`.
+**The gap this closes.** `nullifier = Poseidon(holder_secret, scope)` (Section 7, Nullifier Construction) prevents replay only if the same `holder_secret` is used for every presentation to an offering. Nothing in Flow 1 stops a holder from re-running it with a freshly generated secret (PRD Flow 6). Since the issuer never learns the secret (PR-5), it cannot tell a genuine re-issuance from a holder quietly resetting their own nullifier space. This is a self-service route around replay detection, independent of the epoch.
 
-**The fix.** `leaf_binding.circom` gains a third public value, `secret_hash = Poseidon(holder_secret)`, alongside the existing `attr_hash`/`leaf` binding. The issuer records `secret_hash` against the holder's `holder_id` — this PoC assumes one device, and therefore one `holder_secret`, per person (`PRD.md` L5); a deployment where one person could hold multiple `holder_id`s would need a person-level key instead of an account-level one, out of scope here. On any later submission for that same `holder_id`, the issuer compares the newly-verified proof's `secret_hash` output against the one on file and rejects a mismatch — `verification-infrastructure.md §4.1`/§4.2 has the concrete mechanism. The issuer must read `secret_hash` from the *verified proof's own public signal*, never from a client-supplied request field — trusting a body value here would reopen exactly the class of gap F2.7 exists to close for `attr_hash`/`leaf` in the first place (§4.3's "the gap," above).
+**The fix.** The leaf-binding proof gains a third public output, `secret_hash = Poseidon(holder_secret)`. The issuer records it against the holder's `holder_id` and, on any later submission for that `holder_id`, compares the newly verified proof's `secret_hash` with the one on file and rejects a mismatch. The mechanism is in `verification-infrastructure.md Section 4.1`/Section 4.2.
 
-**Why this doesn't touch PR-5.** `secret_hash` is a one-way commitment, not the secret: `holder_secret` is a high-entropy random field element (generated on-device, PR-5), and Poseidon has no known inverse — the issuer gains a value it can *compare*, never one it can recover `holder_secret` from. PR-5's guarantee is about the secret itself being transmitted or recoverable; a hash of it reaching the issuer is a different, and much weaker, disclosure.
+The issuer must read `secret_hash` from the verified proof's own public output, never from a client-supplied request field. Trusting a request value would reopen the same gap Section 4.3 (Leaf-Binding Proof) closes for `attr_hash` and `leaf`.
 
-**What this does not close.** Forcing the same secret forever has a real product cost: `holder_secret` lives only in the phone's local secure storage, so a lost or replaced device makes it unrecoverable, and a compromised secret can never be rotated through the API — either failure mode is permanent exclusion from re-issuance, as far as the product surface goes. This PoC accepts that cost rather than building a reset endpoint for it: recovery, if ever needed, means an operator directly clearing the stored `secret_hash` binding in the database — a deployment-level operation, not a product feature, consistent with this PoC's single-operator trust model (`PRD.md` L1). That's a narrower, documented residual limitation (`PRD.md` L5), not a full close.
+This relies on the PoC's assumption of one device, and therefore one `holder_secret`, per person (PRD L5). A deployment where one person could hold several `holder_id`s would need a person-level key instead of an account-level one, which is out of scope here.
+
+**Why this doesn't touch PR-5.** `secret_hash` is a one-way commitment, not the secret. `holder_secret` is a high-entropy random field element generated on-device (PR-5), and Poseidon has no known inverse, so the issuer gains a value it can compare, never one it can recover the secret from. PR-5 forbids transmitting or recovering the secret itself; a hash of it reaching the issuer is a different and much weaker disclosure.
+
+**What this does not close.** Forcing the same secret forever has a product cost. `holder_secret` lives only in the phone's local secure storage, so a lost or replaced device makes it unrecoverable, and a compromised secret cannot be rotated through the API. Either case means permanent exclusion from re-issuance at the product level. The PoC accepts this instead of building a reset endpoint: recovery means an operator clearing the stored `secret_hash` binding in the database by hand, consistent with the single-operator trust model (PRD L1). This residual limitation is documented in PRD L5.
 
 ---
 
 ## 5. Predicates in Circuit Terms
 
-The regulation's two live EU sub-conditions map onto composite booleans built from the raw predicates:
+The two EU sub-conditions the MVP implements map onto composite booleans built from the raw predicates:
 
 - **Condition A** (income or portfolio) = P1 ∨ P2
 - **Condition B** (professional experience) = P3
 
-P4 (the M-of-N reference case) evaluates `sum(ConditionA, ConditionB) ≥ M`, with `M = 2, N = 2` for the current MVP — implemented as a generic parameterized construct, not a hardcoded AND, so a third condition (reinstating market activity or another regime) is a configuration change, not a circuit rewrite (F2.4, PRD post-MVP extension #7).
+P4 combines them as `sum(ConditionA, ConditionB) ≥ M` with `M = 2, N = 2` (Section 5.2, Threshold-of-N Construct).
 
 | # | Predicate | Circuit inputs | Logic |
 | --- | --- | --- | --- |
@@ -118,57 +120,71 @@ P4 (the M-of-N reference case) evaluates `sum(ConditionA, ConditionB) ≥ M`, wi
 | P3 | ≥1yr financial sector OR ≥12mo executive | private: `financial_sector_months`, `executive_months` | `financial_sector_months ≥ 12 ∨ executive_months ≥ 12` |
 | P4 | ≥2 of {A, B} hold | derived: `condA = P1 ∨ P2`, `condB = P3` | generic `ThresholdOfN(M=2, N=2)` over `[condA, condB]` |
 | P5 | jurisdiction ∈ allowed set | private: `jurisdiction_code`, Merkle path; public: `jurisdictionRoot` | Merkle inclusion proof |
-| P6 | subject ∉ sanctions set | private: `identity_commitment`, low-leaf triple (`value`, `nextValue`, `nextIndex`) and its Merkle path; public: `sanctionsRoot` | indexed-tree non-membership via embedded next-pointer, §5.3 |
+| P6 | subject ∉ sanctions set | private: `identity_commitment`, low-leaf triple (`value`, `nextValue`, `nextIndex`) and its Merkle path; public: `sanctionsRoot` | indexed-tree non-membership via embedded next-pointer, Sec. 5.3, Non-Membership Construction |
 | P7 | credential not expired | private: `expiry_epoch`; public: `currentEpoch` | `expiry_epoch ≥ currentEpoch` |
-| P8 | credential not revoked | private: `leaf`, Merkle path; public: `validSetRoot` | Merkle inclusion of `leaf` |
-| P9 | scope-bound single use | private: `holder_secret`; public: `scope` → output `nullifier` | `nullifier = Poseidon(holder_secret, scope)` — deliberately excludes `epoch`, §7 |
+| P8 | credential not revoked | derived: `leaf = Poseidon(holder_secret, attr_hash)`; private: Merkle path; public: `validSetRoot` | Merkle inclusion of `leaf` |
+| P9 | scope-bound single use | private: `holder_secret`; public: `scope` → output `nullifier` | `nullifier = Poseidon(holder_secret, scope)` — deliberately excludes `epoch`, Sec. 7, Nullifier Construction |
 
-### 5.1 Public vs. Private Inputs (summary)
+P4 and P6 need their own constructions (Sections 5.2 and 5.3); P8 and P9 are explained in Sections 6 (Epoch and Revocation) and 7 (Nullifier Construction). P1 to P3, P5 and P7 are fully described by the table.
 
-**Public (verifier-visible):** `nullifier` (output), `jurisdictionRoot`, `sanctionsRoot`, `validSetRoot`, `currentEpoch`, `scope`. This list is a set, not a positional claim — but stated here in the actual `public.json`/on-chain array order (outputs first, then declared public inputs in `component main {public [...]}`'s order), verified against `circuits/credential/input_full.json` vs. `public_full.json` (`verification-infrastructure.md §3.3` has the full verification method).
+### 5.1 Public vs. Private Inputs
+
+**Public (verifier-visible), in on-chain array order:** `nullifier` (output), `jurisdictionRoot`, `sanctionsRoot`, `validSetRoot`, `currentEpoch`, `scope`. The order is verified against `circuits/credential/input_full.json` and `public_full.json` (method: `verification-infrastructure.md Section 3.3`).
 **Private (never leave the device):** all attribute values, `holder_secret`, all Merkle paths.
 
-This is the concrete enumeration PR-3 requires ("a verifier MUST learn only: eligible/not eligible, the scope-bound nullifier, and the public inputs required for verification").
+This is the enumeration PR-3 requires: a verifier learns only eligibility, the scope-bound nullifier, and the public inputs needed for verification.
 
 ### 5.2 Threshold-of-N Construct (P4, F2.4)
 
-A first-class, reusable circuit component: given `N` boolean signals and a threshold `M`, output `1` iff at least `M` are true. Implemented as a summation (`Σ conditions ≥ M`) rather than an enumerated OR-of-ANDs, so `N` and `M` are template parameters — extending to 2-of-3 later (post-MVP extension #7) means instantiating with `N=3`, not rewriting the predicate.
+A reusable circuit component: given `N` boolean signals and a threshold `M`, it outputs `1` iff at least `M` are true. It sums the signals and compares the total with `M`, rather than enumerating OR-of-ANDs, so `N` and `M` are template parameters. Extending to 2-of-3 means instantiating with `M=2, N=3` instead of rewriting the predicate. The inputs must already be boolean; every caller passes comparator outputs.
 
 ### 5.3 Non-Membership Construction (P6, TR-3)
 
-**Indexed Merkle tree**, using the linked-list-in-a-tree construction (the same category used by indexed-tree accumulators elsewhere, e.g. Aztec's). Each leaf commits to a triple, not a bare value:
+**Indexed Merkle tree**, a linked list stored in a tree (as in Aztec's nullifier tree). The tree holds the sanctioned `identity_commitment` values. Each leaf commits to a triple, not a bare value:
 
 ```
 leaf_i = Poseidon(value_i, nextValue_i, nextIndex_i)
 ```
 
-sorted so that following `nextIndex` pointers visits every sanctioned `value` in ascending order. Two sentinels bound the range: a `value = 0` leaf below the smallest real entry, and the leaf holding the largest real entry carries `nextValue = p - 1` (the field's top) instead of pointing to another real entry — so both "below everything" and "above everything" collapse into ordinary in-range checks against a sentinel, with no special-case logic in the circuit.
+Leaves are sorted so that following `nextIndex` pointers visits every sanctioned `value` in ascending order. Two sentinels bound the range: a `value = 0` leaf below the smallest entry, and a top leaf with `nextValue = p − 1` (the field's top) instead of a pointer to another entry. "Below everything" and "above everything" therefore become ordinary range checks, with no special-case logic in the circuit.
 
 Non-membership of `identity_commitment` is proven by:
 
-1. Locating the single leaf whose `value < identity_commitment < nextValue` (found off-circuit by the holder; the circuit only checks the relation holds)
-2. Proving Merkle inclusion of *that one leaf* — its full triple, hashed — against `sanctionsRoot`
+1. Locating the single leaf whose `value < identity_commitment < nextValue` (found off-circuit by the holder; the circuit only checks the relation holds).
+2. Proving Merkle inclusion of that one leaf (its full triple, hashed) against `sanctionsRoot`.
 
-Adjacency is enforced by construction, not by a side condition: `nextValue` is part of the hashed leaf content the root commits to, so a holder cannot substitute a false gap — the actual next sanctioned value (or the upper sentinel) is exactly what `sanctionsRoot` attests to. This closes a gap a simpler design would leave open: exhibiting two independently-proven adjacent leaves (`low`, `high`) and trusting the issuer's insertion procedure to have kept them gapless would ask the circuit to trust an invariant it has no way to check itself — nothing would stop a holder from picking two *non-adjacent* members that happen to bracket `identity_commitment`, silently passing off a value that actually sits between them as absent. The embedded-pointer design closes that gap, and costs one Merkle proof per check instead of two.
+Adjacency is enforced by construction: `nextValue` is part of the hashed leaf the root commits to, so a holder cannot substitute a false gap. A design with two independently proven adjacent leaves would rely on the issuer keeping them gapless, an invariant the circuit cannot check; a holder could pick two non-adjacent members that bracket their identity. The embedded pointer closes that gap and costs one Merkle proof per check instead of two.
 
-Chosen over a bitmap or flat-list scan because it stays constant-size regardless of sanctions-list size, matching the "allowlist/sanctions set sizes" complexity parameter (TR-5, PRD).
+Chosen over a bitmap or flat-list scan because proof size stays constant regardless of the list's size (TR-3).
+
+**Comparator range and padding.** The circuit compares with 252-bit comparators, which are correct only when the two compared values are within 2^252 of each other (the field is about 2^253.6). Gaps between consecutive tree values must therefore stay below 2^252, and a small or unlucky sanctions list would break that: an empty list, for example, would reject every honest holder. The issuer therefore seeds the tree with six fixed padding entries, `k × 2^251` for `k = 1…6`, which keep every gap, including the two sentinel ranges, below 2^252 whatever the real list looks like. The guarantee depends on the list staying sorted and linked: inserting real entries only narrows gaps, and the padding entries must never be removed. Tests: `circuits/credential/test/sanctions_padding.test.js`.
 
 ### 5.4 Public Input Binding and Cross-Checking
 
-Every public input listed in §5.1 (`jurisdictionRoot`, `sanctionsRoot`, `validSetRoot`, `currentEpoch`, `scope`) is trustworthy for two separate reasons, not one — conflating them is easy to do and worth being precise about.
+Each public input is trustworthy for two separate reasons, and both are needed.
 
-**Cryptographic binding (Groth16 itself).** Proving outputs both the proof and the exact public signal values used (`public.json`); verifying — `snarkjs groth16 verify` off-chain, or `Groth16Verifier.sol`'s `verifyProof()` on-chain — takes the proof *and* the public signals as explicit arguments, and the underlying pairing equation only balances for that exact combination. Change any public input's value between proving and verifying and the proof simply fails to verify. This is what stops a holder from generating a proof against one set of public inputs and later presenting it as though it were generated against a different set — a purely cryptographic guarantee, requiring no trust in any contract's logic.
+**Cryptographic binding (Groth16).** A proof is bound to the exact public signal values it was generated with: verification takes the proof and the public signals together, and the pairing equation balances only for that combination. Changing any public input after proving makes verification fail, so a proof cannot be presented as if it had been generated against different inputs. This guarantee is purely cryptographic and needs no trust in any contract's logic.
 
-**Recorded-value cross-checking (the verifying party's own logic, not Groth16's).** Cryptographic validity alone only confirms a proof is valid for *some* specific public input values — it says nothing about whether those are the *right* values for this context. A proof can be cryptographically perfect against a stale `validSetRoot`, a `jurisdictionRoot` belonging to an unrelated tree, or a `scope` belonging to a different offering entirely. Stopping that requires the verifying party to separately compare each verified public input against what it has independently recorded as correct, as an ordinary equality check outside of `verifyProof()` itself. §6 below already states this for `validSetRoot` (a stale root is rejected as non-current); the same check is required for `jurisdictionRoot` (does it match the specific issuer-approved root this offering registered against — `specs/phase-3/verification-infrastructure.md §1`/§3.1 covers why that root must be issuer-approved in the first place, not a value the platform invented) and `scope` (does it match this offering's own recorded identifier — §7 below covers this specifically, since without it a proof legitimately generated for one offering could be replayed against a different offering's access grant, defeating the entire scope-bound nullifier design).
+**Recorded-value cross-checking (the verifier's own logic).** Cryptographic validity shows only that a proof is valid for *some* public input values, not that they are the *right* ones for this context. A proof can be perfect against a stale `validSetRoot`, a `jurisdictionRoot` from an unrelated tree, or the `scope` of a different offering. The verifying contract therefore compares each public input with what it has recorded, using ordinary equality checks outside the generated verifier:
+
+| Public input | Must equal |
+| --- | --- |
+| `jurisdictionRoot` | the issuer-approved root this offering registered against (`verification-infrastructure.md Sec. 1`/Sec. 3.1 explains why it must be issuer-approved) |
+| `sanctionsRoot` | the registry's current sanctions root |
+| `currentEpoch` | the registry's current epoch |
+| `validSetRoot` | the registry's valid-set root for that epoch |
+| `scope` | this offering's own identifier; without it, a proof generated for one offering could be replayed against another offering's grant and defeat the scope-bound nullifier (Sec. 7, Nullifier Construction) |
+
+The `nullifier` output is checked differently: it must not have been consumed before (Section 7, Nullifier Construction).
 
 ---
 
 ## 6. Epoch & Revocation Model
 
-- **Epoch:** a monotonically increasing integer, issuer-controlled. Each epoch has exactly one `validSetRoot`, published on-chain by `EligibilityRegistry` (TR-10).
-- **Rotation trigger:** any change to the valid-set root forces a new epoch — revocation (issuer removes a leaf, recomputes, publishes) *and* issuance (issuer inserts a leaf, recomputes, publishes) both count, since either one changes the root the same way. No fixed timer independent of these events — resolved during Phase 3 (`specs/phase-3/verification-infrastructure.md §1`; §9 below has the full resolution history). This means an epoch is an event counter, not a clock — see `PRD.md` L4 for the consequence this has for P7's expiry semantics.
-- **Path refresh:** holders must re-fetch their Merkle path against the current root each epoch to keep proving membership — an explicit, accepted UX cost (PRD §4.1). The same cost applies independently to `sanctionsRoot`: it isn't tied to the credential epoch cycle at all (§5.3), so *any* sanctions-list addition can go stale a proof mid-flight exactly the way a revocation does to `validSetRoot`, on its own schedule. A phone that takes seconds to minutes to prove (F1.3's on-device measurements) can have either root move underneath it before submission — two independently-rotating staleness clocks, not one (`specs/phase-3/verification-infrastructure.md §6` measures the on-chain rejection this produces; F5.3's UX bands should account for both, not just epoch rotation).
-- **Bounded exposure window:** between a revocation event and the next root publication, a credential whose Merkle path still validates against the *previous* root can still produce a proof if the verifier accepts stale roots. **Mitigation:** the platform's presentation request specifies `currentEpoch`/`validSetRoot` explicitly (Flow 2, step 2), and the circuit's public input for `validSetRoot` must match what the verifier contract holds on record for that epoch — a proof against a stale root is simply a proof against a public input the on-chain verifier rejects as non-current. The exposure window is therefore bounded by *root publication latency*, not by holder behavior. (This is §5.4's recorded-value cross-checking, applied to `validSetRoot` specifically — the same requirement extends to `jurisdictionRoot` and `scope`.)
+- **Epoch:** a monotonically increasing integer controlled by the issuer. Each epoch has exactly one `validSetRoot`, published on-chain by `EligibilityRegistry` (TR-10).
+- **Rotation trigger:** any change to the valid-set root starts a new epoch, whether it is a revocation (the issuer removes a leaf) or an issuance (the issuer inserts one), since either changes the root the same way. There is no timer, so an epoch is an event counter, not a clock (PRD L4 covers the consequence for P7's expiry). Rationale: `verification-infrastructure.md Section 1`.
+- **Path refresh:** holders must re-fetch their Merkle path against the current root each epoch to keep proving membership, an accepted UX cost (PRD Section 4.1). `sanctionsRoot` does not follow the epoch: any sanctions addition can make a proof in flight stale, on its own schedule. A proof can therefore go stale on two independent clocks while the phone is still proving. The on-chain rejection is tested in `verification-infrastructure.md Section 7.3` (cases 14 and 15), and Phase 5's UX bands (F5.3) should account for both.
+- **Bounded exposure window:** between the issuer's decision to revoke and the confirmation of the transaction that publishes the new root, the credential still verifies. After that, any older proof carries a `currentEpoch` and `validSetRoot` that no longer match the registry's, and the contract rejects it (Section 5.4, Cross-Checking). The window is therefore bounded by root publication latency, not by holder behavior.
 
 ---
 
@@ -178,26 +194,24 @@ Every public input listed in §5.1 (`jurisdictionRoot`, `sanctionsRoot`, `validS
 nullifier = Poseidon(holder_secret, scope)
 ```
 
-- `scope`: a field element uniquely identifying the presentation context — in practice, a specific offering (PRD §5's real-estate offering is the running example) — assigned on-chain, sequentially, by `OfferingPolicy.registerOffering` itself (`scope = offeringId` directly, no hashing — `verification-infrastructure.md §1`) and included in the presentation request for the holder's device to prove against (Flow 2, step 2). Groth16 cryptographically prevents a holder from swapping `scope` after proving (§5.4's cryptographic binding) — but that alone doesn't stop a proof legitimately generated for one offering from being submitted to a *different* offering's access grant. Each offering's own contract must independently check the verified `scope` equals its own recorded identifier before granting access (§5.4's recorded-value cross-checking) — the same pattern already required for `validSetRoot` (§6), just without which the scope-bound nullifier design offers no real protection at all.
+- `scope`: a field element identifying the presentation context, in practice one offering. `OfferingPolicy.registerOffering` assigns it on-chain, sequentially (`scope = offeringId` directly, no hashing; `verification-infrastructure.md Section 1`), and the platform includes it in the presentation request (Flow 2, step 2). Groth16 prevents swapping `scope` after proving, but a proof generated for one offering could still be submitted to another offering's access grant, so each offering's contract also checks the verified `scope` against its own identifier (Section 5.4, Cross-Checking).
 
-**Why `epoch` is deliberately excluded.** Including it would break replay detection in practice, not just in theory: `currentEpoch` is a single counter that advances system-wide on *any* holder's issuance or revocation (`verification-infrastructure.md §1`), so hashing it into the nullifier would mean Alice's nullifier for a fixed offering is stable only *within one epoch*. The moment epoch advances for any reason, anywhere, `Poseidon(holder_secret, epoch+1, scope)` would be a brand-new, unconsumed value, and nothing would stop her presenting again. Given epoch bumps on every issuance (not just revocation, §1), this would not be a rare edge case in a live system with more than one holder — it would be close to a standing one. `scope` alone already gives one nullifier per (holder, offering) pair, which is exactly the granularity reuse-prevention needs, and epoch freshness is enforced independently regardless — P7's in-circuit expiry check, and `OfferingPolicy.presentEligibility`'s recorded-value check that the proof's claimed epoch is the registry's *current* one (§5.4, `verification-infrastructure.md §3.3`). Neither of those needs the nullifier's own value to depend on epoch to work.
+**Why `epoch` is excluded.** `currentEpoch` is one counter that advances system-wide on any holder's issuance or revocation (`verification-infrastructure.md Section 1`). Hashing it into the nullifier would make Alice's nullifier for a fixed offering stable only within one epoch: once the epoch advances for any reason, `Poseidon(holder_secret, epoch+1, scope)` would be a fresh, unconsumed value and she could present again. With more than one holder that happens constantly. `scope` alone already gives one nullifier per (holder, offering) pair, which is the granularity reuse prevention needs, and epoch freshness is enforced independently: by P7's in-circuit expiry check, and by `OfferingPolicy.presentEligibility` checking that the proof's epoch is the registry's current one (Section 5.4, Cross-Checking).
 
-**Why scope-bound, not a single nullifier per holder.** Consider the alternative: `nullifier = Poseidon(holder_secret)`, dropping `scope` entirely. This would give a holder exactly one valid presentation ever, across every offering for the rest of the credential's life — a second, entirely unrelated offering would collide with the first and be rejected as a replay. It would also mean every presentation that holder ever makes emits the *same* nullifier value everywhere, trivially linking all of it — collapsing PR-6's unlinkability guarantee into a single static pseudonym. Binding `scope` into the nullifier fixes both problems: reuse-prevention applies *within* one offering, not globally, and different offerings ⇒ different, unrelated-looking nullifier values (PR-6, PR-7), for the same holder, indefinitely.
+**Why scope-bound, not one nullifier per holder.** With `nullifier = Poseidon(holder_secret)`, a holder would get exactly one valid presentation across every offering for the credential's life, since a second, unrelated offering would collide with the first. Every presentation would also emit the same value everywhere, linking all of them and collapsing PR-6's unlinkability into a single static pseudonym. Binding `scope` fixes both: reuse is prevented within one offering, not globally, and different offerings produce unrelated-looking nullifiers for the same holder (PR-6, PR-7).
 
-**Who enforces this, and how — not the issuer.** The valid-set tree (§6 above) and the nullifier record are separate structures with separate owners, easy to conflate but functionally unrelated. The issuer maintains the valid-set tree (issuance, revocation, root publication) and has **no role in nullifier handling at all**. Reuse-prevention is enforced entirely on-chain, downstream of the issuer:
+**Who enforces it: the chain, with no role for the issuer.** The valid-set tree (Section 6, Epoch and Revocation) and the nullifier record are separate structures with separate owners. The issuer maintains the tree and never handles nullifiers; reuse prevention happens entirely on-chain:
 
-1. The holder generates the proof — `nullifier` is one of its public outputs — and hands it to the *platform* (Flow 2, step 5).
-2. The platform submits it in a transaction to the chain (Flow 2, step 6) — the platform submits, never the holder (PRD §9.3).
-3. A registry contract (TR-10) verifies the proof and, if it holds, checks whether that exact `nullifier` value has already been recorded in its consumed-nullifier set. This is a flat "have I seen this value" lookup, not a tree — `scope` is already baked into the value itself, so no separate scope-tracking structure is needed on-chain.
-4. If new, it's recorded as consumed in the same transaction as verification (PR-7); if already present, the transaction is rejected. Both happen atomically — there is no window between "verify" and "record" for a second, colliding presentation to slip through.
+1. The holder generates the proof, with `nullifier` as one of its public outputs, and hands it to the platform (Flow 2, step 5).
+2. The platform submits it in a transaction (Flow 2, step 6); the platform submits, never the holder (PRD Section 9.3).
+3. `OfferingPolicy` runs the recorded-value checks (Section 5.4, Cross-Checking) and verifies the proof, then asks `NullifierRegistry` to record the nullifier. This is a flat "have I seen this value" lookup, not a tree: `scope` is already part of the value, so no scope-tracking structure is needed.
+4. A new nullifier is recorded as consumed in the same transaction as verification (PR-7); one already present makes the transaction revert. Verification and recording are atomic, so there is no window for a second, colliding presentation to slip through.
 
-The mechanism specified here is *what* gets checked and recorded, and that it happens atomically — not the contract's internal implementation, which is Phase 3 work and doesn't exist yet.
+**Replay check, concretely:** two presentations by Alice to the same offering produce the same nullifier, so the second is rejected (PR-7), however much time or however many epochs pass between them. A presentation by Charlie to the same offering produces a different nullifier, because it depends on his own `holder_secret`.
 
-**Replay check, concretely:** two presentations by Alice to the same offering produce the same nullifier — the second is rejected (PR-7) — *regardless of how much time or how many epochs pass between them*, now that the nullifier no longer depends on `epoch`. A presentation by Charlie to that *same* offering produces a different nullifier, since it depends on his own `holder_secret` — his activity is entirely unaffected by Alice's, even though they're using the same scope.
+**Cross-scope linkage:** the same `holder_secret` across two scopes produces unrelated nullifiers by design, so limits spanning offerings, such as a cumulative cap, cannot be enforced without linking presentations (PRD Section 4.2).
 
-**Cross-scope linkage:** explicitly not solvable by this construction — the same `holder_secret` across two different `scope`s produces unrelated nullifiers, so cumulative caps across scopes cannot be enforced without additional linkage. Stated in PRD §4.2 and repeated here since it's directly a nullifier-design consequence.
-
-**Re-issuance with a fresh secret (L5):** closed by `secret_hash` — §4.3.1 has the mechanism.
+**Re-issuance with a fresh secret** (PRD L5): closed by `secret_hash`; Section 4.3.1 has the mechanism.
 
 ---
 
@@ -205,26 +219,33 @@ The mechanism specified here is *what* gets checked and recorded, and that it ha
 
 ### 8.1 Assets
 
-- Attribute values (income, portfolio, experience, jurisdiction)
+**Privacy**
+- Attribute values (income, portfolio, experience, jurisdiction) and the holder's identity
 - `holder_secret`
 - Linkage between two presentations by the same holder
 - Which specific credential (leaf) a given proof corresponds to
 
+**Integrity**
+- The eligibility decision: only holders who meet the predicates obtain a grant
+- One grant per credential per offering (the consumed-nullifier record)
+- Authenticity of roots (only the issuer publishes them) and of leaves (only issuer-attested values enter the tree)
+
 ### 8.2 Adversaries
 
-| Adversary | Capability | Must not learn / must not succeed at |
+| Adversary | Capability | Security goals |
 | --- | --- | --- |
-| Platform (honest-but-curious) | Sees proof, public inputs, nullifier, offering scope | Attribute values; linking two nullifiers from different scopes to the same holder (PR-3, PR-6) |
-| Chain observer | Sees all on-chain state: roots, nullifiers, transactions | Correlating nullifiers across scopes to a holder; recovering attribute values or which leaf produced a proof |
-| Malicious holder | Controls their own device, credential, and circuit inputs | Producing a valid proof without qualifying attributes; replaying a nullifier within a scope; proving membership after revocation and root rotation; submitting a leaf built from fabricated, unattested attributes at issuance (§4.3) |
-| Compromised/malicious issuer | Out of scope (L1) — a single operator runs both issuer and holder | N/A; not addressed by this protocol |
+| Platform (honest-but-curious) | Sees proof, public inputs, nullifier, offering scope | Learns no attribute values; cannot link two nullifiers from different scopes to the same holder (PR-3, PR-6) |
+| Chain observer | Sees all on-chain state: roots, nullifiers, transactions | Cannot correlate nullifiers across scopes to a holder, recover attribute values, tell which leaf produced a proof, or tell which credential a root change added or removed (PR-6, PR-10) |
+| Malicious holder | Controls their own device, credential and circuit inputs | Cannot produce a valid proof without qualifying attributes, replay a nullifier within a scope, prove membership after revocation, prove non-membership while sanctioned, reset their nullifier space by re-issuing with a fresh secret, or get a leaf built from fabricated attributes inserted (Sec. 4.3, Leaf-Binding Proof, and Sec. 4.3.1) |
+
+The issuer is trusted (L1); what it learns is listed in Section 8.3 (Trust Boundaries).
 
 ### 8.3 Trust Boundaries
 
 | Boundary | Crosses it | Never crosses it |
 | --- | --- | --- |
 | Issuer → Device | attribute values and expected attribute hash *(issuance)*; Merkle path *(issuance, presentation)*; sanctions and jurisdiction Merkle paths *(presentation)* | — |
-| Device → Issuer *(issuance)* | holder ID, commitment, leaf-binding proof (§4.3; its public outputs include `secret_hash = Poseidon(holder_secret)`) | holder secret, attribute values |
+| Device → Issuer *(issuance)* | holder ID, commitment, leaf-binding proof (Sec. 4.3, Leaf-Binding Proof; its public outputs include `secret_hash = Poseidon(holder_secret)`) | holder secret, attribute values |
 | Issuer → Chain | published roots (`validSetRoot`, `sanctionsRoot`), jurisdiction root approvals | leaves, attribute values, holder secret |
 | Device → Issuer *(presentation)* | holder ID, identity commitment, jurisdiction code, and on first use of a jurisdiction root, that root | holder secret, proof, nullifier, scope |
 | Platform → Device | presentation request: scope, epoch, `jurisdictionRoot` | — |
@@ -236,24 +257,18 @@ The Merkle path fetch tells the issuer which holders present and when. A jurisdi
 
 ### 8.4 Attack → Mitigation Map
 
-| Attack | Mitigation | Requirement |
-| --- | --- | --- |
-| Forge eligibility without qualifying attributes | Predicate logic is enforced in-circuit; Groth16 soundness | PR-1–PR-4 |
-| Steal/replay another holder's proof | Proof is bound to `holder_secret` via `leaf` and `nullifier`; without the secret, no valid witness exists | PR-5 |
-| Correlate two presentations by the same holder | Scope-bound nullifier (§7); no shared public value across scopes | PR-6, PR-7 |
-| Replay a nullifier within one scope | On-chain `NullifierRegistry` rejects duplicates | PR-7 |
-| Use a revoked credential | `validSetRoot` public input pinned to current epoch; revoked leaf absent from current tree | PR-8, PR-9 |
-| Determine which credential was revoked from chain data alone | Root rotation reveals only a new root hash, not which leaf changed | PR-10 |
-| Learn which predicate failed from a failed proof | Groth16 proofs are all-or-nothing; no partial-validity signal | PR-4 |
-| Submit a leaf built from fabricated attributes different from what the issuer attested | Issuer verifies a leaf-binding proof (§4.3) before inserting the leaf — `Poseidon(holder_secret, attr_hash) = leaf` for the issuer's own attested `attr_hash` | PR-19 |
-| Platform stores attribute data | Impossible by construction — attributes never transmitted | PR-1 |
-
----
-
-## 9. Open Items Deferred to Phase 2/3
-
-All three items below were resolved during Phase 3 spec work (`specs/phase-3/verification-infrastructure.md §1`), kept here for the historical record of what this document originally left open:
-
-- ~~**Epoch rotation cadence policy**~~ — resolved: no fixed timer; epoch increments on *any* valid-set root change, issuance as well as revocation (`verification-infrastructure.md §1`; see `PRD.md` L4 for what this means for P7's expiry semantics).
-- ~~**Sanctions/jurisdiction tree maintenance procedure**~~ — resolved: the issuer service implements the real splice procedure this document's §5.3 specifies (`verification-infrastructure.md §1`, §4.3).
-- ~~**Exact `scope` derivation from `offering_id`**~~ — resolved: `scope = offeringId` directly, no hashing (`verification-infrastructure.md §1`). This turned out to be an `OfferingPolicy` contract concern, not a platform-backend one — `offeringId` is assigned on-chain, sequentially, by `OfferingPolicy.registerOffering` itself.
+| Attack | Adversary | Mitigation | Requirement / spec |
+| --- | --- | --- | --- |
+| Forge eligibility without qualifying attributes | Malicious holder | Predicate logic is enforced in-circuit; Groth16 soundness (Sec. 5, Predicates) | F2.2, F2.6 |
+| Prove with another holder's credential | Malicious holder | Proof is bound to `holder_secret` via `leaf` and `nullifier`; without the secret, no valid witness exists | PR-5 |
+| Replay someone else's observed proof | Platform, chain observer | The nullifier is consumed on first use, and the scope check rejects the proof at any other offering (Sec. 5.4, Cross-Checking, and Sec. 7, Nullifier Construction). A proof is not bound to a recipient address (PRD L7) | PR-7 |
+| Replay a nullifier within one scope | Malicious holder | `NullifierRegistry` rejects duplicates on-chain | PR-7 |
+| Reset the nullifier space by re-issuing with a fresh secret | Malicious holder | `secret_hash` binding checked by the issuer (Sec. 4.3.1) | PR-7 |
+| Use a revoked credential | Malicious holder | `validSetRoot` pinned to the current epoch; revoked leaf absent from the current tree | PR-8, PR-9 |
+| Present a proof built against stale or foreign public inputs | Malicious holder | Recorded-value cross-checking (Sec. 5.4, Cross-Checking) | TR-10 |
+| Prove non-membership while sanctioned | Malicious holder | Adjacency enforced by the indexed-tree construction (Sec. 5.3, Non-Membership Construction) | TR-3 |
+| Submit a leaf built from fabricated attributes | Malicious holder | Leaf-binding proof checked by the issuer before insertion (Sec. 4.3, Leaf-Binding Proof) | PR-19 |
+| Correlate two presentations by the same holder | Platform, chain observer | Scope-bound nullifier (Sec. 7, Nullifier Construction); no shared public value across scopes | PR-6, PR-7 |
+| Determine which credential was revoked from chain data alone | Chain observer | Root rotation reveals only a new root hash, not which leaf changed | PR-10 |
+| Learn attribute values | Platform, chain observer | Attribute values never leave the device; only the proof and public inputs are transmitted (Sec. 8.3, Trust Boundaries) | PR-1, PR-3 |
+| Learn which predicate failed from a failed proof | Platform | A proof either verifies or does not exist; there is no partial-validity signal | PR-4 |

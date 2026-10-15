@@ -5,7 +5,7 @@
 // elsewhere in the system, per the audit finding that a nullifier
 // depending on epoch defeats replay detection the moment epoch advances
 // for any reason. Used by OfferingPolicy.t.sol's cross-epoch replay
-// regression test (specs/phase-3/verification-infrastructure.md §7.3
+// regression test (specs/phase-3/verification-infrastructure.md Section 7.3
 // case 11b).
 const fs = require("fs");
 const path = require("path");

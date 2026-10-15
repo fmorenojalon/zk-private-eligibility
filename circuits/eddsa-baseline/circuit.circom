@@ -4,7 +4,7 @@ include "../node_modules/circomlib/circuits/eddsaposeidon.circom";
 
 // Phase 1 baseline primitive (F1.4): EdDSA-over-Baby-Jubjub signature
 // verification, Poseidon-based per TR-2. Standalone reference cost -
-// per protocol-spec.md §3 the Phase 2 credential circuit does NOT verify
+// per protocol-spec.md Section 3 the Phase 2 credential circuit does NOT verify
 // an issuer signature in-circuit (tree membership is the attestation), so
 // this number characterizes the primitive but is not part of that
 // circuit's constraint count.

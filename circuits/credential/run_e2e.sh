@@ -1,6 +1,6 @@
 #!/bin/bash
 # End-to-end setup+prove+verify pass per circuit configuration -
-# specs/phase-2/eligibility-circuits.md §7. Mirrors circuits/*-baseline's
+# specs/phase-2/eligibility-circuits.md Section 7. Mirrors circuits/*-baseline's
 # methodology (circom --r1cs --wasm, Powers-of-Tau + snarkjs groth16
 # setup + one dev contribution, prove, verify), timed the same way
 # BASELINE_RESULTS.md's numbers were produced (wall-clock date +%s%N

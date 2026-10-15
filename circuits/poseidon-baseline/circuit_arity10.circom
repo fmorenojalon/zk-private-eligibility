@@ -3,7 +3,7 @@ pragma circom 2.2.3;
 include "../node_modules/circomlib/circuits/poseidon.circom";
 
 // F1.4 baseline: arity 10, matching attr_hash = Poseidon(10 attributes) from
-// specs/phase-1/protocol-spec.md §4.2. Companion to circuit.circom (arity 2,
+// specs/phase-1/protocol-spec.md Section 4.2. Companion to circuit.circom (arity 2,
 // used for leaf = Poseidon(holder_secret, attr_hash) and for F1.1's on-device
 // plumbing test).
 template PoseidonBaselineArity10() {

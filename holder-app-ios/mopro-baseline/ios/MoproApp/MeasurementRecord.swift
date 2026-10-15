@@ -3,8 +3,8 @@
 //  MoproApp
 //
 //  F1.3: structured measurement records per
-//  specs/phase-1/measurement-pipeline.md §2, persisted locally first and
-//  synced to the collector afterward (§3) so a transient network gap or a
+//  specs/phase-1/measurement-pipeline.md Section 2, persisted locally first and
+//  synced to the collector afterward (Section 3) so a transient network gap or a
 //  sleeping collector can't lose a run.
 //
 import Foundation
@@ -142,7 +142,7 @@ enum MeasurementStore {
     return dir.appendingPathComponent("measurement_records.ndjson")
   }
 
-  // Persist immediately (§3) - called before any network attempt.
+  // Persist immediately (Section 3) - called before any network attempt.
   static func persist(_ record: MeasurementRecord) {
     guard let data = try? JSONEncoder().encode(record),
       let line = String(data: data, encoding: .utf8)

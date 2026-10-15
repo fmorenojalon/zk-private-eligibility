@@ -9,7 +9,7 @@ import {Groth16VerifierP1Only} from "../src/verifiers/Groth16VerifierP1Only.sol"
 import {Groth16VerifierCondAB} from "../src/verifiers/Groth16VerifierCondAB.sol";
 import {Groth16VerifierFull} from "../src/verifiers/Groth16VerifierFull.sol";
 
-// specs/phase-3/verification-infrastructure.md §6 (F3.7). Isolated gas
+// specs/phase-3/verification-infrastructure.md Section 6 (F3.7). Isolated gas
 // measurements, one test per number reported in PHASE3_RESULTS.md - kept
 // separate from the correctness test suites so `forge test --gas-report`
 // output for this file maps directly onto that table, uncluttered by
@@ -124,27 +124,27 @@ contract GasMeasurementTest is Test {
         returns (uint256[2] memory pA, uint256[2][2] memory pB, uint256[2] memory pC, uint256[6] memory publicSignals)
     {
         pA = [
-            0x1ea2297bb145da2c150b49237b782f9dd3775af2fa8d8d1bcf3936393835e11e,
-            0x30355218c7356879250395d7619ea3529f0348ed8d7cef91420d62d49e2b2281
+            0x24861ea70418a9050775457a21f51154d4f3e7ab973b855a5f6dfd7804c1c772,
+            0x1f5dc70ca8cb58d6d12d235842975150405ed7a682c6e45271acbe9b973ed0e1
         ];
         pB = [
             [
-                0x05aadf4ae017b5a751248e5d8f0e046c8a3d5717d79e807a69d91790818b14d4,
-                0x238a2e36252e0da1070d1bbf3a9e9a5a1d66fcbf4e385f0b796e34d4f976e1a2
+                0x2160dee2f49cab55e47de064e66c559d7a4dc369f6fa7e509c2ac87a85bae199,
+                0x2f82a2da8da367e173f0487c6a5dab9f9c601d42d8cbaae6abbf731d8bf61b1c
             ],
             [
-                0x04b51142a343ddc219611e43f703f3980884b70227504db7877d498c5c94f773,
-                0x0263200cf53d8fa9ba21be7dcd01bfb113559fe170f28cb8774695ec2cd85bd7
+                0x25570d11eb2bec7548e7d5fbe5e4f8a8cd6dfae79f5b5b81dd6e3dbbb5e753a2,
+                0x0d4f415ca39939d25a70fdc4b7ba3b5b52fba5460bbffbae46499be87c2ca3cf
             ]
         ];
         pC = [
-            0x01df1e61a87819d2399a4e80d204ad2aa2296345a4cee7af93045758eaff510a,
-            0x17e03702ad1e5938a3743decd95f969ed660d199c9732a9aebce11d0f16f2c06
+            0x164f3788a330c007d4f10691b981d15648af712ba4cfcba723921e1feb6c2fb1,
+            0x0f28c1ff33e619d386c40c1b2aba17a7a66ab787b106a829c583b5ad43c94654
         ];
         publicSignals = [
             0x08d54883e989bc5094454a9625a15d0abe3b96de641f26cec85f3eef7bef8bab,
             0x0a85c9dc3c9b7d1a4b73627f0ac4eedfb2a11a20cf5194bbb0e089384ee3f3ff,
-            0x0b9fa49e73ac3e867872fcbe504c1a93652e83a030af877ec38d2fd7a9b51af3,
+            0x019bd66abc02866ee9621d2377848d93a98a7f17f1fcc7ec337ece1e5368a21a,
             0x13da7c1d32569bf2a92e1aea89a0a85a9397cfc47a581edffe2fe55db5197fb2,
             0x0000000000000000000000000000000000000000000000000000000000000005,
             0x0000000000000000000000000000000000000000000000000000000000000000

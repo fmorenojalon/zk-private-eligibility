@@ -1,8 +1,8 @@
 // Measurement collector (F1.3, TR-8, TR-13).
 //
 // Ingests batches of structured measurement records synced from the device
-// (specs/phase-1/measurement-pipeline.md §4). The device persists records
-// locally first and retries sync until acknowledged (§3), so this service
+// (specs/phase-1/measurement-pipeline.md Section 4). The device persists records
+// locally first and retries sync until acknowledged (Section 3), so this service
 // only needs to be idempotent on record_id - re-delivery of an
 // already-seen record is a no-op, not a duplicate entry.
 "use strict";

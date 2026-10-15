@@ -10,7 +10,7 @@ include "threshold.circom";
 // composition, plus the always-structural P7/P8/P9 - but no P5/P6
 // (jurisdiction/sanctions membership). Exists specifically to isolate
 // P5/P6's constraint cost from P3/P4's once measured
-// (eligibility-circuits.md §2's "why three, not two"), not to model any
+// (eligibility-circuits.md Section 2's "why three, not two"), not to model any
 // real regulatory variant - the EU regime always needs P5/P6 too
 // (circuit_full.circom).
 template CircuitCondAB(depth) {
@@ -36,7 +36,7 @@ template CircuitCondAB(depth) {
     signal output nullifier;
 
     // F2.1: attr_hash = Poseidon(9 attributes), leaf = Poseidon(holder_secret,
-    // attr_hash) - credential-protocol.md §4.2.
+    // attr_hash) - credential-protocol.md Section 4.2.
     component attrHash = Poseidon(9);
     attrHash.inputs[0] <== income;
     attrHash.inputs[1] <== portfolio_value;
@@ -66,7 +66,7 @@ template CircuitCondAB(depth) {
     condA.b <== p2.out;
 
     // condB = P3 (>=1yr financial sector OR >=12mo executive, both
-    // inclusive - credential-protocol.md §5).
+    // inclusive - credential-protocol.md Section 5).
     component p3a = RangeGte(64);
     p3a.value <== financial_sector_months;
     p3a.threshold <== 12;
@@ -80,7 +80,7 @@ template CircuitCondAB(depth) {
     condB.b <== p3b.out;
 
     // P4: >=2 of {condA, condB} - which, at N=2, means both, per the EU
-    // 2-of-2 MVP scope (credential-protocol.md §5, §5.2).
+    // 2-of-2 MVP scope (credential-protocol.md Sections 5, 5.2).
     component p4 = ThresholdOfN(2, 2);
     p4.conditions[0] <== condA.out;
     p4.conditions[1] <== condB.out;
@@ -103,7 +103,7 @@ template CircuitCondAB(depth) {
     p8.root <== validSetRoot;
     p8.valid === 1;
 
-    // P9: scope-bound nullifier (credential-protocol.md §7). Always
+    // P9: scope-bound nullifier (credential-protocol.md Section 7). Always
     // computed as output, never constrained. Excludes currentEpoch
     // deliberately - epoch changes system-wide on every issuance or
     // revocation, so hashing it in would mint a fresh, unconsumed

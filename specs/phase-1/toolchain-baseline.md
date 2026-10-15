@@ -67,10 +67,10 @@ Four standalone circuits, no credential logic — pure primitive measurement:
 
 | Circuit | Parameters tested | Purpose |
 | --- | --- | --- |
-| `poseidon-baseline` | arity 2, arity 10 | matched the two Poseidon arities used in the credential commitment at the time ([credential-protocol.md §4.2](../credential-protocol.md#42-commitment-structure)); `attr_hash`'s arity later dropped to 9 when the investment-ceiling predicate was retired, so arity 10 is now the closest reference point rather than an exact match — see that section for detail |
+| `poseidon-baseline` | arity 2, arity 10 | matched the two Poseidon arities used in the credential commitment at the time ([credential-protocol.md Sec. 4.2](../credential-protocol.md#42-commitment-structure)); `attr_hash`'s arity later dropped to 9 when the investment-ceiling predicate was retired, so arity 10 is now the closest reference point rather than an exact match — see that section for detail |
 | `merkle-baseline` | depth ∈ {16, 20, 32} | matches TR-5's complexity parameters; reused directly for P5/P6/P8 in Phase 2 |
 | `range-baseline` | single comparator over a 64-bit value | matches the income/portfolio field sizes used in P1/P2 |
-| `eddsa-baseline` | single EdDSA-Poseidon signature verification | standalone reference number per F1.4 — **not** used in the Phase 2 credential circuit per [credential-protocol.md §3](../credential-protocol.md#3-issuer-attestation-membership-only-design-decision), but still required baseline data |
+| `eddsa-baseline` | single EdDSA-Poseidon signature verification | standalone reference number per F1.4 — **not** used in the Phase 2 credential circuit per [credential-protocol.md Sec. 3](../credential-protocol.md#3-issuer-attestation-membership-only-design-decision), but still required baseline data |
 
 **Per circuit, per parameter set, recorded:**
 - Constraint count (`circom --r1cs`)
@@ -95,17 +95,17 @@ All values go through the measurement pipeline ([measurement-pipeline.md](measur
 **Path exercised end-to-end:**
 
 1. circom source → R1CS + WASM witness generator (circom)
-2. Trusted setup → proving/verification keys (snarkjs, §4)
+2. Trusted setup → proving/verification keys (snarkjs, Section 4)
 3. mopro-cli generates Swift bindings wrapping the native (non-WASM) Groth16 prover
 4. Minimal SwiftUI baseline app (`holder-app-ios/`, Phase 1 scope only — not the full holder app) invokes the binding, generates a proof **on physical device**
 5. Proof + public signals exported off-device (via the measurement collector's sync path, or directly for verification testing)
-6. Proof verified against the generated Solidity verifier on Anvil (§7)
+6. Proof verified against the generated Solidity verifier on Anvil (Section 7)
 
 **Hard constraint (TR-6):** proofs generated in the iOS Simulator do not count as valid measurements or satisfy F1.1 — must run on the physical iPhone 14 Pro.
 
-**Status: satisfied.** `holder-app-ios/mopro-baseline` wraps the `poseidon-baseline` circuit via mopro, builds and signs against a free personal-team Apple Developer account, and its `MoproAppUITests.testCircomProveVerify` test — which launches the app on the paired iPhone 14 Pro, taps "Prove", and asserts the proof completes — passed running natively on-device (`xcodebuild test -destination "id=<device UDID>"`, physical device confirmed via `devicectl`/`xctrace`, not the Simulator). Toolchain and device setup steps, including several non-obvious build/signing issues encountered getting here, are recorded in [TOOLCHAIN.md §9](../../TOOLCHAIN.md#9-building-an-f11-style-mopro-app-for-a-physical-device-caveats) for reproducibility (TR-13). Rationale for why this stack (mopro/native bindings) is needed at all is in [ARCHITECTURE.md](../ARCHITECTURE.md), "Native mobile proving" section.
+**Status: satisfied.** `holder-app-ios/mopro-baseline` wraps the `poseidon-baseline` circuit via mopro, builds and signs against a free personal-team Apple Developer account, and its `MoproAppUITests.testCircomProveVerify` test — which launches the app on the paired iPhone 14 Pro, taps "Prove", and asserts the proof completes — passed running natively on-device (`xcodebuild test -destination "id=<device UDID>"`, physical device confirmed via `devicectl`/`xctrace`, not the Simulator). Toolchain and device setup steps, including several non-obvious build/signing issues encountered getting here, are recorded in [TOOLCHAIN.md Section 9](../../TOOLCHAIN.md#9-building-an-f11-style-mopro-app-for-a-physical-device-caveats) for reproducibility (TR-13). Rationale for why this stack (mopro/native bindings) is needed at all is in [ARCHITECTURE.md](../ARCHITECTURE.md), "Native mobile proving" section.
 
-**No network during proving (TR-7):** the baseline app must not require network access while the proof is being generated; the device may go on Wi-Fi only afterward to sync measurement records ([measurement-pipeline.md §4](measurement-pipeline.md#4-emission--export-path)).
+**No network during proving (TR-7):** the baseline app must not require network access while the proof is being generated; the device may go on Wi-Fi only afterward to sync measurement records ([measurement-pipeline.md Section 4](measurement-pipeline.md#4-emission--export-path)).
 
 ---
 
@@ -115,16 +115,16 @@ All values go through the measurement pipeline ([measurement-pipeline.md](measur
 
 **Steps:**
 
-1. `snarkjs zkey export solidityverifier` → `Groth16Verifier.sol` for the `poseidon-baseline` circuit (same circuit as §6, so F1.1 and F1.2 exercise the identical artifact).
+1. `snarkjs zkey export solidityverifier` → `Groth16Verifier.sol` for the `poseidon-baseline` circuit (same circuit as Section 6, so F1.1 and F1.2 exercise the identical artifact).
 2. Deploy `Groth16Verifier.sol` to Anvil via a Foundry script.
 3. Foundry test suite:
-   a. **Genuine proof:** submit a real proof + correct public inputs generated from §6 → assert the verifier returns `true`.
+   a. **Genuine proof:** submit a real proof + correct public inputs generated from Section 6 → assert the verifier returns `true`.
    b. **Tampered proof:** flip one byte of the proof (`a`, `b`, or `c` component) → assert the verifier returns `false`/reverts.
    c. **Tampered public input:** mutate one public signal while keeping the proof unchanged → assert the verifier returns `false`/reverts.
 
 This is the acceptance test for F1.2 directly — no additional interpretation needed at Phase 1 review.
 
-**Status: satisfied.** `contracts/` (Foundry project) holds the generated `Groth16Verifier.sol`. `forge test` passes all three cases against Foundry's in-memory EVM, using a real proof/public-signal fixture from `circuits/poseidon-baseline/{proof,public}.json`. Independently confirmed against an actual running Anvil process (`anvil --port 8545`, matching the PRD §9.1 Local chain service) via `forge create` + `cast call verifyProof(...)`: the genuine proof returns `true`, a tampered public input returns `false` — not a revert, since the generated verifier's assembly checks the pairing precompile's success flag and returns a bool rather than propagating a raw failure. See `contracts/README.md` for exact reproduction commands.
+**Status: satisfied.** `contracts/` (Foundry project) holds the generated `Groth16Verifier.sol`. `forge test` passes all three cases against Foundry's in-memory EVM, using a real proof/public-signal fixture from `circuits/poseidon-baseline/{proof,public}.json`. Independently confirmed against an actual running Anvil process (`anvil --port 8545`, matching the PRD Section 9.1 Local chain service) via `forge create` + `cast call verifyProof(...)`: the genuine proof returns `true`, a tampered public input returns `false` — not a revert, since the generated verifier's assembly checks the pairing precompile's success flag and returns a bool rather than propagating a raw failure. See `contracts/README.md` for exact reproduction commands.
 
 ---
 
@@ -132,7 +132,7 @@ This is the acceptance test for F1.2 directly — no additional interpretation n
 
 | Requirement | Satisfied by |
 | --- | --- |
-| F1.1 | §6 — proof generated on physical iPhone 14 Pro |
-| F1.2 | §7 — genuine proof accepted, tampered proof/inputs rejected on Anvil |
-| F1.4 | §5 — four baseline circuits measured across their parameter sets |
-| Phase 1 deliverable | §5 + §6 + §7 combined, plus [credential-protocol.md](../credential-protocol.md) (F1.5) and [measurement-pipeline.md](measurement-pipeline.md) (F1.3) |
+| F1.1 | Sec. 6 — proof generated on physical iPhone 14 Pro |
+| F1.2 | Sec. 7 — genuine proof accepted, tampered proof/inputs rejected on Anvil |
+| F1.4 | Sec. 5 — four baseline circuits measured across their parameter sets |
+| Phase 1 deliverable | Sec. 5 + Sec. 6 + Sec. 7 combined, plus [credential-protocol.md](../credential-protocol.md) (F1.5) and [measurement-pipeline.md](measurement-pipeline.md) (F1.3) |

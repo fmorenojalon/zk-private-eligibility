@@ -1,7 +1,7 @@
 # Phase 1 — Measurement Pipeline Specification
 
 **Satisfies:** F1.3, TR-8 and TR-13
-**Status: satisfied.** Collector, on-device emission, and analysis script are all implemented and confirmed end-to-end on the physical iPhone 14 Pro — see [measurement/README.md](../../measurement/README.md) for reproduction steps and real collected data. Two design points changed from this draft during implementation, both noted inline below: `analyze.py` ended up stdlib-only (§5), and the durability design (§3) got real validation, not just a description — see the note there.
+**Status: satisfied.** Collector, on-device emission, and analysis script are all implemented and confirmed end-to-end on the physical iPhone 14 Pro — see [measurement/README.md](../../measurement/README.md) for reproduction steps and real collected data. Two design points changed from this draft during implementation, both noted inline below: `analyze.py` ended up stdlib-only (Section 5), and the durability design (Section 3) got real validation, not just a description — see the note there.
 
 ---
 
@@ -68,7 +68,7 @@ Field notes:
 
 ## 3. On-Device: Persist, Then Sync
 
-**Design decision:** records are never fire-and-forget. Each record is written to durable on-device storage (local file, append-only NDJSON) **immediately** after the run completes — before any network call is attempted. A background sync process then POSTs unsynced records to the measurement collector (§4) and marks them synced only on acknowledged receipt. If the collector is unreachable, unsynced records simply accumulate on-device until the next successful sync — no run is lost to a transient network gap or a collector that's asleep.
+**Design decision:** records are never fire-and-forget. Each record is written to durable on-device storage (local file, append-only NDJSON) **immediately** after the run completes — before any network call is attempted. A background sync process then POSTs unsynced records to the measurement collector (Section 4) and marks them synced only on acknowledged receipt. If the collector is unreachable, unsynced records simply accumulate on-device until the next successful sync — no run is lost to a transient network gap or a collector that's asleep.
 
 This durability requirement exists specifically so that a multi-hour measurement session (F1.4's full parameter sweep, and later Phase 5's sustained-load runs) can't silently drop data partway through.
 
@@ -78,8 +78,8 @@ This durability requirement exists specifically so that a multi-hour measurement
 
 ## 4. Emission & Export Path
 
-- **On-device:** the Phase 1 iOS baseline app ([toolchain-baseline.md §6](toolchain-baseline.md#6-ios-native-proving-integration-layer-f11)) writes each record to local NDJSON storage per §3, then attempts sync.
-- **Collector service:** a new lightweight HTTP service, `measurement/collector`, on the Mac at port `3003` (added to PRD §9.1). Exposes a single ingest endpoint that accepts a batch of NDJSON records, deduplicates by `record_id`, and appends new ones to `measurement/records/`.
+- **On-device:** the Phase 1 iOS baseline app ([toolchain-baseline.md Section 6](toolchain-baseline.md#6-ios-native-proving-integration-layer-f11)) writes each record to local NDJSON storage per Section 3, then attempts sync.
+- **Collector service:** a new lightweight HTTP service, `measurement/collector`, on the Mac at port `3003` (added to PRD Section 9.1). Exposes a single ingest endpoint that accepts a batch of NDJSON records, deduplicates by `record_id`, and appends new ones to `measurement/records/`.
 - **Sync timing:** only after proof generation completes — never during proving (TR-7). The device may re-enable network specifically to sync, then proceed with the next run.
 - **Idempotency:** because sync can retry, the collector must treat re-delivery of an already-seen `record_id` as a no-op, not a duplicate entry.
 
@@ -114,6 +114,6 @@ Phase 1 does not perform sustained-load characterization itself (that's Phase 5,
 
 | Requirement | Satisfied by |
 | --- | --- |
-| TR-8 (structured record, all metrics) | §2 |
-| TR-13 (reproducibility) | §6 |
-| F1.3 | §2–§7 combined |
+| TR-8 (structured record, all metrics) | Sec. 2 |
+| TR-13 (reproducibility) | Sec. 6 |
+| F1.3 | Secs. 2–7 combined |

@@ -12,7 +12,7 @@
 
 ## System topology
 
-Per PRD §9.1 — everything runs on a local machine except the holder app, which runs on the iPhone 14 Pro, communicating over the local network. Nothing is hosted externally (TR-14).
+Per PRD Section 9.1 — everything runs on a local machine except the holder app, which runs on the iPhone 14 Pro, communicating over the local network. Nothing is hosted externally (TR-14).
 
 | Component | Role | Stack |
 | --- | --- | --- |
@@ -25,7 +25,7 @@ Per PRD §9.1 — everything runs on a local machine except the holder app, whic
 | Platform backend | Offering policy, presentation requests, proof intake | Node.js + TypeScript |
 | Platform frontend | Offering UI, QR presentation, result display | React + Vite |
 
-Trust boundaries (what crosses which boundary, and what never does) are defined in `credential-protocol.md` §8.3 — not repeated here to avoid drift between copies of the same table.
+Trust boundaries (what crosses which boundary, and what never does) are defined in `credential-protocol.md` Section 8.3 — not repeated here to avoid drift between copies of the same table.
 
 ---
 
@@ -39,7 +39,7 @@ Trust boundaries (what crosses which boundary, and what never does) are defined 
 
 **Why Poseidon:** a hash designed for arithmetic circuits, far cheaper in constraints than SHA-256 or Keccak. A single Poseidon call over two inputs costs 517 constraints (measured in [`../circuits/BASELINE_RESULTS.md`](../circuits/BASELINE_RESULTS.md)).
 
-**Tradeoff accepted:** Groth16 needs a circuit-specific trusted setup (TR-4); PLONK-family systems avoid this at the cost of larger proofs and costlier verification. The first phase reuses the public Hermez Powers-of-Tau, and only the circuit-specific second phase runs locally, a negligible cost for a research PoC. Groth16 over BN254 is also not quantum-safe (PRD §11 L9).
+**Tradeoff accepted:** Groth16 needs a circuit-specific trusted setup (TR-4); PLONK-family systems avoid this at the cost of larger proofs and costlier verification. The first phase reuses the public Hermez Powers-of-Tau, and only the circuit-specific second phase runs locally, a negligible cost for a research PoC. Groth16 over BN254 is also not quantum-safe (PRD Section 11 L9).
 
 ---
 
@@ -47,7 +47,7 @@ Trust boundaries (what crosses which boundary, and what never does) are defined 
 
 **Choice:** mopro for on-device proving. Circuits run through a compiled native path: `rust-witness` transpiles the circuit's WASM to native code at build time, `arkworks` does the Groth16 proving, and UniFFI-generated bindings expose it to Swift.
 
-**Why:** an iOS app is one compiled, sandboxed binary with no Node.js or script runtime inside it, so the desktop `snarkjs` path cannot run there. mopro orchestrates the native path in place of hand-rolled cross-compilation and FFI work, and builds on existing libraries throughout. Setup steps: [`../TOOLCHAIN.md` §1–§6](../TOOLCHAIN.md) (desktop) and [§8](../TOOLCHAIN.md#8-ios-toolchain) (iOS).
+**Why:** an iOS app is one compiled, sandboxed binary with no Node.js or script runtime inside it, so the desktop `snarkjs` path cannot run there. mopro orchestrates the native path in place of hand-rolled cross-compilation and FFI work, and builds on existing libraries throughout. Setup steps: [`../TOOLCHAIN.md` Sections 1–6](../TOOLCHAIN.md) (desktop) and [Section 8](../TOOLCHAIN.md#8-ios-toolchain) (iOS).
 
 **Tradeoff accepted:** the proving call is opaque. Witness generation and proving run as one FFI call with no timing or progress hooks, so measurement records report the combined time under `proving_ms` and the holder app can show an estimate of proving time but not live progress.
 
@@ -59,7 +59,7 @@ Trust boundaries (what crosses which boundary, and what never does) are defined 
 
 **Why:** `snarkjs` generates the verifier in Solidity and the EVM is the verification target (TR-9). Foundry is fast, runs Solidity tests directly against an in-memory EVM, and ships as native binaries, so it adds no third runtime next to Rust (mopro) and Node (circuits tooling).
 
-**Structure:** the contracts are split by who owns the data. `EligibilityRegistry` holds the issuer's roots, `NullifierRegistry` the consumed nullifiers, and `OfferingPolicy` each offering's policy and the proof check through the generated verifier. Details: `specs/phase-3/verification-infrastructure.md §3`.
+**Structure:** the contracts are split by who owns the data. `EligibilityRegistry` holds the issuer's roots, `NullifierRegistry` the consumed nullifiers, and `OfferingPolicy` each offering's policy and the proof check through the generated verifier. Details: `specs/phase-3/verification-infrastructure.md Section 3`.
 
 ---
 
@@ -69,7 +69,7 @@ Trust boundaries (what crosses which boundary, and what never does) are defined 
 
 **Why:** the collector only receives JSON records over local HTTP, deduplicates them by `record_id` and appends them to an NDJSON file, so a framework such as Express would add attack surface and install steps for no benefit. Likewise pandas adds install friction without adding capability at this data volume (dozens to low hundreds of records). Fewer dependencies also serve clean-checkout reproducibility (TR-13).
 
-**Durability:** the app persists each record on-device first and syncs afterwards, retrying until the collector acknowledges, so a measurement run survives an unreachable collector. Details: [`measurement-pipeline.md` §3](phase-1/measurement-pipeline.md#3-on-device-persist-then-sync).
+**Durability:** the app persists each record on-device first and syncs afterwards, retrying until the collector acknowledges, so a measurement run survives an unreachable collector. Details: [`measurement-pipeline.md` Section 3](phase-1/measurement-pipeline.md#3-on-device-persist-then-sync).
 
 ---
 

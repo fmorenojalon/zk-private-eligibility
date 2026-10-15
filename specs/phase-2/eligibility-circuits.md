@@ -19,7 +19,7 @@ Implement the credential commitment and the full EU-regime predicate logic (P1�
 circuits/credential/
 ├── range_predicates.circom      RangeCheck-based: P1, P2, P3, P7
 ├── threshold.circom             ThresholdOfN(M, N) - P4
-├── indexed_nonmembership.circom IndexedNonMembership - P6 (new, credential-protocol.md §5.3)
+├── indexed_nonmembership.circom IndexedNonMembership - P6 (new, credential-protocol.md Section 5.3)
 ├── circuit_p1only.circom        component main - Condition A only (P1∨P2), depth 20
 ├── circuit_condab.circom        component main - full 2-of-2 threshold (P1-P4), no P5/P6, depth 20
 ├── circuit_full.circom          component main - full EU 2-of-2 regime, depth 20
@@ -44,26 +44,26 @@ Phase 5's fuller complexity-parameter sweep (F5.1) can add more named configurat
 
 ## 3. F2.1 — Credential Commitment (binding attributes to `holder_secret`)
 
-Fully specified in `credential-protocol.md §4.2`: `attr_hash = Poseidon(9 attributes)`, `leaf = Poseidon(holder_secret, attr_hash)`. No open design question — this is a direct implementation of an existing formula. One clarification worth stating explicitly here since it affects every circuit variant: **`attr_hash` always takes all nine attributes, regardless of which predicates a given circuit variant checks.** `circuit_p1only.circom` still declares all nine attribute signals as private inputs — it just doesn't constrain most of them against a threshold. There's no "partial credential" concept; the commitment structure is fixed per `credential-protocol.md`, only which *checks* run varies.
+Fully specified in `credential-protocol.md Section 4.2`: `attr_hash = Poseidon(9 attributes)`, `leaf = Poseidon(holder_secret, attr_hash)`. No open design question — this is a direct implementation of an existing formula. One clarification worth stating explicitly here since it affects every circuit variant: **`attr_hash` always takes all nine attributes, regardless of which predicates a given circuit variant checks.** `circuit_p1only.circom` still declares all nine attribute signals as private inputs — it just doesn't constrain most of them against a threshold. There's no "partial credential" concept; the commitment structure is fixed per `credential-protocol.md`, only which *checks* run varies.
 
-**No signature appears anywhere in these circuits, by design, not by omission.** F2.1 originally cited an issuer EdDSA signature alongside the Poseidon commitment; that is now retired (PRD §11 L3). Credential authenticity rests entirely on registry access control — a leaf can only enter the valid-set tree via a transaction from the issuer's address (`credential-protocol.md §3`), so tree membership already proves issuer authorization. That's Phase 3 infrastructure, not something a Phase 2 circuit template checks or could check. Access control is the property doing the real work here; it's cheaper than a signature and sufficient under this PoC's trust model (issuer honesty is already assumed, PRD L1), at the cost of authenticity depending on that one registry contract's access-control logic being correct rather than being independently verifiable the way a signature would be.
+**No signature appears anywhere in these circuits, by design, not by omission.** F2.1 originally cited an issuer EdDSA signature alongside the Poseidon commitment; that is now retired (PRD Section 11 L3). Credential authenticity rests entirely on registry access control — a leaf can only enter the valid-set tree via a transaction from the issuer's address (`credential-protocol.md Section 3`), so tree membership already proves issuer authorization. That's Phase 3 infrastructure, not something a Phase 2 circuit template checks or could check. Access control is the property doing the real work here; it's cheaper than a signature and sufficient under this PoC's trust model (issuer honesty is already assumed, PRD L1), at the cost of authenticity depending on that one registry contract's access-control logic being correct rather than being independently verifiable the way a signature would be.
 
 ---
 
 ## 4. F2.2 — Predicate Templates (P1–P9)
 
-Each predicate from `credential-protocol.md §5` becomes an independent, independently-testable circom template, organized into files by primitive per §2's separation:
+Each predicate from `credential-protocol.md Section 5` becomes an independent, independently-testable circom template, organized into files by primitive per Section 2's separation:
 
 | Predicate | Template | File | Reuses |
 | --- | --- | --- | --- |
 | P1, P2 | `RangeCheck` (two instances: income≥60000, portfolio>100000) | `range_predicates.circom` | `circuits/range-baseline`'s `GreaterEqThan` pattern |
 | P3 | `RangeCheck` (two instances, OR'd: financial_sector_months≥12 ∨ executive_months≥12) | `range_predicates.circom` | same |
-| P4 | `ThresholdOfN(M, N)` over `[condA, condB]`, `M=2, N=2` | `threshold.circom` | `credential-protocol.md §5.2`'s spec |
+| P4 | `ThresholdOfN(M, N)` over `[condA, condB]`, `M=2, N=2` | `threshold.circom` | `credential-protocol.md Sec. 5.2`'s spec |
 | P5 | `MerkleBaseline(depth)` against `jurisdictionRoot` | — included directly from `circuits/merkle-baseline/template.circom` | `circuits/merkle-baseline`'s `template.circom`, reused as-is |
-| P6 | `IndexedNonMembership` against `sanctionsRoot` — takes the low leaf's `(value, nextValue, nextIndex)` triple plus its Merkle path, not a bare value | `indexed_nonmembership.circom` | new — `credential-protocol.md §5.3`'s embedded-next-pointer construction, not yet built anywhere |
+| P6 | `IndexedNonMembership` against `sanctionsRoot` — takes the low leaf's `(value, nextValue, nextIndex)` triple plus its Merkle path, not a bare value | `indexed_nonmembership.circom` | new — `credential-protocol.md Sec. 5.3`'s embedded-next-pointer construction, not yet built anywhere |
 | P7 | inline `GreaterEqThan(expiry_epoch, currentEpoch)` | `range_predicates.circom` | — |
 | P8 | `MerkleBaseline(depth)` against `validSetRoot` (on `leaf`) | — included directly from `circuits/merkle-baseline/template.circom` | `circuits/merkle-baseline`'s `template.circom`, reused as-is |
-| P9 | `nullifier = Poseidon(holder_secret, scope)` — deliberately excludes `epoch` (`credential-protocol.md §7`) | inline in `circuit_p1only.circom`/`circuit_full.circom` | direct Poseidon call, no sub-template needed |
+| P9 | `nullifier = Poseidon(holder_secret, scope)` — deliberately excludes `epoch` (`credential-protocol.md Sec. 7`) | inline in `circuit_p1only.circom`/`circuit_full.circom` | direct Poseidon call, no sub-template needed |
 
 `MerkleBaseline` gets instantiated **twice** in `circuit_full.circom` (P5 against `jurisdictionRoot`, P8 against `validSetRoot`) — same template, different root/path per call. `IndexedNonMembership` (P6) is the one predicate in this table with no existing baseline to reuse — genuinely new circuit logic, not an adaptation of `circuits/{range,merkle,eddsa}-baseline`.
 
@@ -71,17 +71,17 @@ Each predicate from `credential-protocol.md §5` becomes an independent, indepen
 
 ## 5. F2.3 — EU 2-of-2 Regime Composition
 
-`circuit_full.circom` wires: `condA = P1 ∨ P2`, `condB = P3`, then `P4 = ThresholdOfN(2, 2)([condA, condB])`. Per `credential-protocol.md §5`, `P4`'s output plus `P7` (freshness), `P8` (not revoked), and `P9` (nullifier, always computed as output) together constitute a valid presentation. `P5`/`P6` (jurisdiction/sanctions) are included whenever `jurisdictionRoot`/`sanctionsRoot` are supplied as public inputs — always, in `circuit_full.circom`.
+`circuit_full.circom` wires: `condA = P1 ∨ P2`, `condB = P3`, then `P4 = ThresholdOfN(2, 2)([condA, condB])`. Per `credential-protocol.md Section 5`, `P4`'s output plus `P7` (freshness), `P8` (not revoked), and `P9` (nullifier, always computed as output) together constitute a valid presentation. `P5`/`P6` (jurisdiction/sanctions) are included whenever `jurisdictionRoot`/`sanctionsRoot` are supplied as public inputs — always, in `circuit_full.circom`.
 
 `circuit_p1only.circom` wires only `condA = P1 ∨ P2` (no `P4`, no `P3`) alongside the always-structural `P7`/`P8`/`P9` — it proves "income or portfolio meets the minimum, and the credential is valid and unrevoked," nothing about professional experience. This is the complexity-parameter range's lower end, not a real regime — the EU regime always requires the full 2-of-2 composition.
 
-`circuit_condab.circom` wires the identical `P4 = ThresholdOfN(2, 2)([condA, condB])` composition as `circuit_full.circom`, plus the always-structural `P7`/`P8`/`P9` — but omits `P5`/`P6` entirely: no `jurisdictionRoot`/`sanctionsRoot` public inputs, no membership/non-membership checks. It exists specifically as the midpoint of the complexity-parameter range (§2), isolating P5/P6's cost once constraint counts are measured, rather than to model any real regulatory variant.
+`circuit_condab.circom` wires the identical `P4 = ThresholdOfN(2, 2)([condA, condB])` composition as `circuit_full.circom`, plus the always-structural `P7`/`P8`/`P9` — but omits `P5`/`P6` entirely: no `jurisdictionRoot`/`sanctionsRoot` public inputs, no membership/non-membership checks. It exists specifically as the midpoint of the complexity-parameter range (Section 2), isolating P5/P6's cost once constraint counts are measured, rather than to model any real regulatory variant.
 
 ---
 
 ## 6. F2.4 — Threshold-of-N as a First-Class Construct
 
-`ThresholdOfN(M, N)` takes `N` boolean signals, outputs 1 iff at least `M` are true — a summation constraint (`Σ conditions ≥ M`), not an enumerated OR-of-ANDs, per `credential-protocol.md §5.2`. Used here at `M=2, N=2`.
+`ThresholdOfN(M, N)` takes `N` boolean signals, outputs 1 iff at least `M` are true — a summation constraint (`Σ conditions ≥ M`), not an enumerated OR-of-ANDs, per `credential-protocol.md Section 5.2`. Used here at `M=2, N=2`.
 
 **Test-suite addition beyond what F2.4 strictly requires:** the generic `ThresholdOfN` construct's value is that reinstating a third condition later is a configuration change, not a redesign — worth substantiating rather than just asserting. `eligibility.test.js` includes a standalone unit test instantiating `ThresholdOfN(2, 3)` directly (not wired into a full credential circuit, just the isolated template) over three synthetic booleans, confirming 2-of-3 combinations correctly pass and fail. Cheap to add, and it's the difference between claiming genericity and demonstrating it.
 
@@ -93,14 +93,14 @@ Each predicate from `credential-protocol.md §5` becomes an independent, indepen
 
 **What "malformed inputs" means here, concretely.** F2.6 calls for coverage across "eligible, ineligible, boundary, and malformed" inputs. In this suite, malformed means adversarially-invalid *values* on an otherwise well-formed input — a wrong `holder_secret`, a tampered Merkle sibling, an out-of-set `identity_commitment` (cases 5, 6, 8, 9, 10, 19 below). It does not mean structurally malformed *shapes* (wrong-length arrays, non-boolean flags) — those would surface as a JS-level error in the test code itself before ever reaching circuit constraints, so testing them exercises `circom_tester`'s own input handling, not this circuit's logic, and isn't included here.
 
-**Fixtures** (`test/fixtures.js`), using the PRD's own personas for narrative continuity with `PRD.md §5`:
+**Fixtures** (`test/fixtures.js`), using the PRD's own personas for narrative continuity with `PRD.md Section 5`:
 - **Alice** — income €70,000, portfolio €150,000, 24 months financial-sector experience, valid jurisdiction, not sanctioned, credential in the current `validSetRoot`, expiry epoch > current epoch. Qualifies on every predicate.
 - **Bob** — income €30,000, portfolio €50,000 (per `PRD.md` Flow 5). Fails `condA`, so fails `P4` regardless of `condB`.
-- **Charlie** — used for boundary and multi-holder cases (§7 of `credential-protocol.md`'s nullifier illustration): income exactly €60,000 (boundary), and a second legitimate presentation to the same offering Alice used, to prove independent nullifiers don't collide across holders.
+- **Charlie** — used for boundary and multi-holder cases (Section 7 of `credential-protocol.md`'s nullifier illustration): income exactly €60,000 (boundary), and a second legitimate presentation to the same offering Alice used, to prove independent nullifiers don't collide across holders.
 
-**Sanctions list fixture:** a static 10-entry test list, built once in `fixtures.js` per `credential-protocol.md §5.3`'s indexed-tree shape — sort the 10 test `identity_commitment` values, derive each leaf's `nextValue`/`nextIndex` from sorted position, add the two sentinel bounds (`value = 0` below the smallest entry, `nextValue = p - 1` on the largest), then build the Merkle tree over `Poseidon(value, nextValue, nextIndex)` leaves. No dynamic insertion logic is needed — that's Phase 3 issuer-service scope — this is a fixed fixture generated once per test run.
+**Sanctions list fixture:** a static 10-entry test list plus the six padding entries (`credential-protocol.md Section 5.3`), built once in `fixtures.js` per `credential-protocol.md Section 5.3`'s indexed-tree shape — sort the 16 values, derive each leaf's `nextValue`/`nextIndex` from sorted position, add the two sentinel bounds (`value = 0` below the smallest entry, `nextValue = p - 1` on the largest), then build the Merkle tree over `Poseidon(value, nextValue, nextIndex)` leaves. No dynamic insertion logic is needed — that's Phase 3 issuer-service scope — this is a fixed fixture generated once per test run.
 
-**Test matrix**, derived directly from `credential-protocol.md §8.4`'s attack→mitigation table rather than invented separately — each row there is a test case here:
+**Test matrix**, derived directly from `credential-protocol.md Section 8.4`'s attack→mitigation table rather than invented separately — each row there is a test case here:
 
 | # | Case | Expected |
 | --- | --- | --- |
@@ -114,7 +114,7 @@ Each predicate from `credential-protocol.md §5` becomes an independent, indepen
 | 8 | Alice's leaf removed from tree (revoked), old root supplied | `calculateWitness` throws (P8) |
 | 9 | Alice's `identity_commitment` present in `sanctionsRoot` | `calculateWitness` throws (P6) |
 | 10 | Alice, `jurisdiction_code` not in `jurisdictionRoot` | `calculateWitness` throws (P5) |
-| 11 | Alice presents twice to the same `scope` | second `nullifier` collides with first (registry-level, noted here but actually enforced on-chain per `credential-protocol.md §7` — this circuit-level test only confirms the *value* repeats, not the on-chain rejection, which is Phase 3) |
+| 11 | Alice presents twice to the same `scope` | second `nullifier` collides with first (registry-level, noted here but actually enforced on-chain per `credential-protocol.md Sec. 7` — this circuit-level test only confirms the *value* repeats, not the on-chain rejection, which is Phase 3) |
 | 12 | Alice and Charlie, same `scope` | distinct nullifiers (independent `holder_secret`) |
 | 13 | Alice, same `holder_secret`, two different `scope`s (Offering A vs. Offering B — `PRD.md` Scenario 2) | two nullifiers with no algebraic relationship to each other (PR-6, PR-7) — this is the unlinkability property the whole demo scenario rests on, and the one case in this matrix that isn't from the attack table (it's a positive property, not a rejection case) |
 | 14 | Standalone `ThresholdOfN(2,3)` unit test | correctly accepts 2-of-3 and 3-of-3, rejects 1-of-3 and 0-of-3 |
@@ -125,7 +125,7 @@ Each predicate from `credential-protocol.md §5` becomes an independent, indepen
 | 19 | Alice, but income €30,000 (fails P1) and portfolio exactly €100,000 (P2 boundary, strict `>`) | `calculateWitness` throws — confirms the exact value is correctly rejected, not accidentally accepted by a `≥` instead of `>` |
 | 20 | Alice, `financial_sector_months` exactly 12, `executive_months` 0 (P3 boundary, inclusive `≥`) | witness exists — confirms 12 is accepted, not accidentally requiring 13 |
 | 21 | Alice, `expiry_epoch` exactly equal to `currentEpoch` (P7 boundary, inclusive `≥`) | witness exists — confirms exact equality is accepted, not accidentally treated as expired |
-| 22 | Alice presents to the same `scope` at two different `currentEpoch` values | same `nullifier` both times — added as an addendum: a nullifier depending on `epoch` (a counter that advances system-wide on *any* holder's issuance or revocation) would mint a fresh, unconsumed value the moment epoch moves forward for any reason, collapsing PR-7's replay detection from "within one scope" to "within one epoch." P9 deliberately excludes `epoch` (§5's table, `credential-protocol.md §7`) for exactly this reason — case 11 above covers same-epoch replay; this case is what exercises the cross-epoch property directly |
+| 22 | Alice presents to the same `scope` at two different `currentEpoch` values | same `nullifier` both times — added as an addendum: a nullifier depending on `epoch` (a counter that advances system-wide on *any* holder's issuance or revocation) would mint a fresh, unconsumed value the moment epoch moves forward for any reason, collapsing PR-7's replay detection from "within one scope" to "within one epoch." P9 deliberately excludes `epoch` (Sec. 5's table, `credential-protocol.md Sec. 7`) for exactly this reason — case 11 above covers same-epoch replay; this case is what exercises the cross-epoch property directly |
 
 Cases involving `P1`–`P4` combination logic or `P5`/`P6` (1–4, 9–10, 19–20) need `circuit_full.circom`; cases 15–16 are explicitly against `circuit_p1only.circom`; cases 17–18 are explicitly against `circuit_condab.circom`; case 14 is a standalone template test, no circuit file. Everything else (5–8, 11–13, 21) exercises `P7`/`P8`/`P9`, which are structural to all three circuits regardless of predicate-count configuration, so it doesn't matter which one runs them — `circuit_full.circom` is the natural default.
 
@@ -152,25 +152,25 @@ No other new tools — everything else (circom 2.2.3, the Poseidon/Merkle/compar
 
 | Requirement | Satisfied by |
 | --- | --- |
-| F2.1 | §3 — direct implementation of `credential-protocol.md §4.2`'s formulas; no signature (retired, PRD L3) |
-| F2.2 | §4 — one template per predicate, organized into files by primitive (§2) |
-| F2.3 | §6 — the standalone `ThresholdOfN(2,3)` test demonstrates the EU 2-of-3 regime is *architecturally* satisfiable (PR-12); §5's `circuit_full.circom` only wires the actual 2-of-2 MVP scope (PRD §2.2) — the third condition isn't instantiated as a live circuit here |
-| F2.4 | §6 — `ThresholdOfN`, plus the N=3 genericity test |
-| F2.5 | §2 — three named configurations sharing depth-parameterized sub-templates |
-| F2.6 | §7 — 21-case matrix via `circom_tester`, derived from the threat model's attack table (plus the unlinkability property and three boundary cases that aren't attack-table rows) |
-| F2.7 | §10 — `leaf_binding.circom`, addendum below |
-| Phase 2 deliverable | All of the above, plus §7's end-to-end setup+prove+verify pass per configuration, with constraint counts and timings recorded in `circuits/credential/PHASE2_RESULTS.md` |
+| F2.1 | Sec. 3 — direct implementation of `credential-protocol.md Sec. 4.2`'s formulas; no signature (retired, PRD L3) |
+| F2.2 | Sec. 4 — one template per predicate, organized into files by primitive (Sec. 2) |
+| F2.3 | Sec. 6 — the standalone `ThresholdOfN(2,3)` test demonstrates the EU 2-of-3 regime is *architecturally* satisfiable (PR-12); Sec. 5's `circuit_full.circom` only wires the actual 2-of-2 MVP scope (PRD Sec. 2.2) — the third condition isn't instantiated as a live circuit here |
+| F2.4 | Sec. 6 — `ThresholdOfN`, plus the N=3 genericity test |
+| F2.5 | Sec. 2 — three named configurations sharing depth-parameterized sub-templates |
+| F2.6 | Sec. 7 — 21-case matrix via `circom_tester`, derived from the threat model's attack table (plus the unlinkability property and three boundary cases that aren't attack-table rows) |
+| F2.7 | Sec. 10 — `leaf_binding.circom`, addendum below |
+| Phase 2 deliverable | All of the above, plus Sec. 7's end-to-end setup+prove+verify pass per configuration, with constraint counts and timings recorded in `circuits/credential/PHASE2_RESULTS.md` |
 
 ---
 
 ## 10. Addendum — F2.7 Leaf-Binding Proof
 
-Added after design review surfaced a real gap (`credential-protocol.md §4.3`): the issuer computing `attr_hash` from its own records (§3 above) and sending it to the holder confirms what the value *is*, but not that the `leaf` the holder actually submits back was built from it — since `leaf = Poseidon(holder_secret, attr_hash)` and the issuer never learns `holder_secret` (PR-5), it has no way to check that equation directly. A dishonest holder could receive one `attr_hash` from the issuer, then commit a leaf built from a different, fabricated one, undetected.
+Added after design review surfaced a real gap (`credential-protocol.md Section 4.3`): the issuer computing `attr_hash` from its own records (Section 3 above) and sending it to the holder confirms what the value *is*, but not that the `leaf` the holder actually submits back was built from it — since `leaf = Poseidon(holder_secret, attr_hash)` and the issuer never learns `holder_secret` (PR-5), it has no way to check that equation directly. A dishonest holder could receive one `attr_hash` from the issuer, then commit a leaf built from a different, fabricated one, undetected.
 
 **`circuits/credential/leaf_binding.circom`** — a proof of knowledge of `holder_secret` such that `Poseidon(holder_secret, attr_hash) = leaf`, with `attr_hash` and `leaf` as public inputs. Structurally identical to `circuits/poseidon-baseline`'s arity-2 circuit (F1.4), just with the output forced equal to a public `leaf` instead of exposed freely — confirmed by compiling to exactly the same 517 constraints. No new template file needed elsewhere; this is a single self-contained circuit, run once per issuance rather than composed into the eligibility circuits.
 
 **Tests** (`test/leaf_binding.test.js`, 4 cases): Alice's real `(holder_secret, attr_hash, leaf)` triple accepted; a fabricated `attr_hash` (claiming a *different* verified attribute set than the one actually hashed into `leaf`) rejected — the exact attack this circuit exists to catch; a fabricated `leaf` rejected; a wrong `holder_secret` against an otherwise-real pair rejected.
 
-**End-to-end validation**: setup→prove→verify pass, same methodology as §7, recorded in `PHASE2_RESULTS.md` alongside the three eligibility configurations.
+**End-to-end validation**: setup→prove→verify pass, same methodology as Section 7, recorded in `PHASE2_RESULTS.md` alongside the three eligibility configurations.
 
-**Where it runs**: at issuance, off-chain — issuance already happens over local HTTP (PRD §9.3), not on-chain, so the issuer verifies this proof itself before inserting the leaf. No on-chain verifier or gas cost for this step.
+**Where it runs**: at issuance, off-chain — issuance already happens over local HTTP (PRD Section 9.3), not on-chain, so the issuer verifies this proof itself before inserting the leaf. No on-chain verifier or gas cost for this step.

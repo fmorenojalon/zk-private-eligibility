@@ -1,6 +1,6 @@
 // Generates input_p1only.json, input_condab.json, input_full.json for
 // Alice's eligible fixture, matching each circuit's exact signal names -
-// specs/phase-2/eligibility-circuits.md §7's end-to-end proof validation
+// specs/phase-2/eligibility-circuits.md Section 7's end-to-end proof validation
 // (PHASE2_RESULTS.md). BigInts are stringified since JSON has no bigint
 // type, matching merkle-baseline/eddsa-baseline's gen_input.js convention.
 const fs = require("fs");
