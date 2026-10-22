@@ -5,7 +5,7 @@ const SCHEMA_VERSION = 1n;
 
 // Fixed padding values for the sanctions tree: k * 2^251, k = 1..6, so that
 // no gap between consecutive values reaches 2^252 (the comparator range of
-// IndexedNonMembership) - credential-protocol.md Section 5.3.
+// IndexedNonMembership) - credential-protocol.md Section 5.2.
 const SANCTIONS_PADDING = Array.from({ length: 6 }, (_, i) => BigInt(i + 1) * 2n ** 251n);
 
 // Sparse Merkle tree over a fixed depth, defaulting every unset leaf to
@@ -180,7 +180,7 @@ async function buildFixtures() {
     BOB.jurisdictionProof = jurisdictionTree.proof(jurisdictionIndexOf(BOB.attrs.jurisdiction_code));
 
     // Sanctions list: indexed Merkle tree with embedded next-pointers,
-    // per credential-protocol.md Section 5.3 / eligibility-circuits.md Section 7's
+    // per credential-protocol.md Section 5.2 / eligibility-circuits.md Section 7's
     // "Sanctions list fixture" - 10 real entries, the SANCTIONS_PADDING
     // entries (see below), and the two implicit bounds (a value=0 leaf
     // below the smallest entry, and the largest entry's own nextValue
@@ -193,7 +193,7 @@ async function buildFixtures() {
 
     // The non-membership circuit's comparators are 252-bit, so they are only
     // correct when the compared values are within 2^252 of each other
-    // (credential-protocol.md Section 5.3). Padding entries at k * 2^251 keep every
+    // (credential-protocol.md Section 5.2). Padding entries at k * 2^251 keep every
     // gap between consecutive tree values below 2^252, whatever the real
     // sanctions list looks like (empty, tiny, or unlucky).
     function buildIndexedTree(depth, realValues, { padding = true } = {}) {
@@ -223,7 +223,7 @@ async function buildFixtures() {
 
     // The one leaf whose (value, nextValue) range brackets `target` -
     // the low-leaf lookup a holder does off-circuit (credential-protocol.md
-    // Section 5.3: "found off-circuit by the holder; the circuit only checks
+    // Section 5.2: "found off-circuit by the holder; the circuit only checks
     // the relation holds").
     function findLowLeafIndex(leaves, target) {
         const idx = leaves.findIndex((l) => l.value < target && target < l.nextValue);

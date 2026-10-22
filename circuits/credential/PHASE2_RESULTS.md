@@ -36,7 +36,7 @@ All three `groth16 verify` runs returned `OK`, against genuine proofs (not witne
 
 The Phase 2 test suite missed a flaw in P6's comparators. `IndexedNonMembership` uses 252-bit comparators, which are only correct when the compared values are within 2^252 of each other, while identity commitments and sanctions values are ~254-bit Poseidon outputs. The suite used one fixed 10-entry list whose gaps happened to stay in range, so it passed. With an empty or small list, honest holders were rejected or could not prove (0 of 300 accepted with an empty list). It was found during the `credential-protocol.md` review. No sanctioned identity was accepted in any test.
 
-**Fix:** the issuer seeds the sanctions tree with six padding entries (`k × 2^251`, `k = 1…6`) so no gap reaches 2^252 (`credential-protocol.md Section 5.3`). The circuit, trusted setup, verifier, constraint counts, proving times and gas are unchanged; only `sanctionsRoot` and the full-circuit fixtures and proofs changed. New suite: `test/sanctions_padding.test.js`.
+**Fix:** the issuer seeds the sanctions tree with six padding entries (`k × 2^251`, `k = 1…6`) so no gap reaches 2^252 (`credential-protocol.md Section 5.2`). The circuit, trusted setup, verifier, constraint counts, proving times and gas are unchanged; only `sanctionsRoot` and the full-circuit fixtures and proofs changed. New suite: `test/sanctions_padding.test.js`.
 
 ## Reproducing
 

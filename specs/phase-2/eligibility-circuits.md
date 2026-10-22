@@ -19,7 +19,7 @@ Implement the credential commitment and the full EU-regime predicate logic (P1�
 circuits/credential/
 ├── range_predicates.circom      RangeCheck-based: P1, P2, P3, P7
 ├── threshold.circom             ThresholdOfN(M, N) - P4
-├── indexed_nonmembership.circom IndexedNonMembership - P6 (new, credential-protocol.md Section 5.3)
+├── indexed_nonmembership.circom IndexedNonMembership - P6 (new, credential-protocol.md Section 5.2)
 ├── circuit_p1only.circom        component main - Condition A only (P1∨P2), depth 20
 ├── circuit_condab.circom        component main - full 2-of-2 threshold (P1-P4), no P5/P6, depth 20
 ├── circuit_full.circom          component main - full EU 2-of-2 regime, depth 20
@@ -58,9 +58,9 @@ Each predicate from `credential-protocol.md Section 5` becomes an independent, i
 | --- | --- | --- | --- |
 | P1, P2 | `RangeCheck` (two instances: income≥60000, portfolio>100000) | `range_predicates.circom` | `circuits/range-baseline`'s `GreaterEqThan` pattern |
 | P3 | `RangeCheck` (two instances, OR'd: financial_sector_months≥12 ∨ executive_months≥12) | `range_predicates.circom` | same |
-| P4 | `ThresholdOfN(M, N)` over `[condA, condB]`, `M=2, N=2` | `threshold.circom` | `credential-protocol.md Sec. 5.2`'s spec |
+| P4 | `ThresholdOfN(M, N)` over `[condA, condB]`, `M=2, N=2` | `threshold.circom` | `credential-protocol.md Sec. 5`'s spec |
 | P5 | `MerkleBaseline(depth)` against `jurisdictionRoot` | — included directly from `circuits/merkle-baseline/template.circom` | `circuits/merkle-baseline`'s `template.circom`, reused as-is |
-| P6 | `IndexedNonMembership` against `sanctionsRoot` — takes the low leaf's `(value, nextValue, nextIndex)` triple plus its Merkle path, not a bare value | `indexed_nonmembership.circom` | new — `credential-protocol.md Sec. 5.3`'s embedded-next-pointer construction, not yet built anywhere |
+| P6 | `IndexedNonMembership` against `sanctionsRoot` — takes the low leaf's `(value, nextValue, nextIndex)` triple plus its Merkle path, not a bare value | `indexed_nonmembership.circom` | new — `credential-protocol.md Sec. 5.2`'s embedded-next-pointer construction, not yet built anywhere |
 | P7 | inline `GreaterEqThan(expiry_epoch, currentEpoch)` | `range_predicates.circom` | — |
 | P8 | `MerkleBaseline(depth)` against `validSetRoot` (on `leaf`) | — included directly from `circuits/merkle-baseline/template.circom` | `circuits/merkle-baseline`'s `template.circom`, reused as-is |
 | P9 | `nullifier = Poseidon(holder_secret, scope)` — deliberately excludes `epoch` (`credential-protocol.md Sec. 7`) | inline in `circuit_p1only.circom`/`circuit_full.circom` | direct Poseidon call, no sub-template needed |
@@ -81,7 +81,7 @@ Each predicate from `credential-protocol.md Section 5` becomes an independent, i
 
 ## 6. F2.4 — Threshold-of-N as a First-Class Construct
 
-`ThresholdOfN(M, N)` takes `N` boolean signals, outputs 1 iff at least `M` are true — a summation constraint (`Σ conditions ≥ M`), not an enumerated OR-of-ANDs, per `credential-protocol.md Section 5.2`. Used here at `M=2, N=2`.
+`ThresholdOfN(M, N)` takes `N` boolean signals, outputs 1 iff at least `M` are true — a summation constraint (`Σ conditions ≥ M`), not an enumerated OR-of-ANDs, per `credential-protocol.md Section 5`. Used here at `M=2, N=2`.
 
 **Test-suite addition beyond what F2.4 strictly requires:** the generic `ThresholdOfN` construct's value is that reinstating a third condition later is a configuration change, not a redesign — worth substantiating rather than just asserting. `eligibility.test.js` includes a standalone unit test instantiating `ThresholdOfN(2, 3)` directly (not wired into a full credential circuit, just the isolated template) over three synthetic booleans, confirming 2-of-3 combinations correctly pass and fail. Cheap to add, and it's the difference between claiming genericity and demonstrating it.
 
@@ -98,7 +98,7 @@ Each predicate from `credential-protocol.md Section 5` becomes an independent, i
 - **Bob** — income €30,000, portfolio €50,000 (per `PRD.md` Flow 5). Fails `condA`, so fails `P4` regardless of `condB`.
 - **Charlie** — used for boundary and multi-holder cases (Section 7 of `credential-protocol.md`'s nullifier illustration): income exactly €60,000 (boundary), and a second legitimate presentation to the same offering Alice used, to prove independent nullifiers don't collide across holders.
 
-**Sanctions list fixture:** a static 10-entry test list plus the six padding entries (`credential-protocol.md Section 5.3`), built once in `fixtures.js` per `credential-protocol.md Section 5.3`'s indexed-tree shape — sort the 16 values, derive each leaf's `nextValue`/`nextIndex` from sorted position, add the two sentinel bounds (`value = 0` below the smallest entry, `nextValue = p - 1` on the largest), then build the Merkle tree over `Poseidon(value, nextValue, nextIndex)` leaves. No dynamic insertion logic is needed — that's Phase 3 issuer-service scope — this is a fixed fixture generated once per test run.
+**Sanctions list fixture:** a static 10-entry test list plus the six padding entries (`credential-protocol.md Section 5.2`), built once in `fixtures.js` per `credential-protocol.md Section 5.2`'s indexed-tree shape — sort the 16 values, derive each leaf's `nextValue`/`nextIndex` from sorted position, add the two sentinel bounds (`value = 0` below the smallest entry, `nextValue = p - 1` on the largest), then build the Merkle tree over `Poseidon(value, nextValue, nextIndex)` leaves. No dynamic insertion logic is needed — that's Phase 3 issuer-service scope — this is a fixed fixture generated once per test run.
 
 **Test matrix**, derived directly from `credential-protocol.md Section 8.4`'s attack→mitigation table rather than invented separately — each row there is a test case here:
 

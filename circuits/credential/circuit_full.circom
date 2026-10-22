@@ -34,7 +34,7 @@ template CircuitFull(depth) {
     signal input jurisdictionPathIndices[depth];
     signal input jurisdictionRoot;
 
-    // P6: sanctions non-membership (credential-protocol.md Section 5.3). The
+    // P6: sanctions non-membership (credential-protocol.md Section 5.2). The
     // low-leaf triple bracketing identity_commitment, found off-circuit,
     // plus its own Merkle path - separate from P5/P8's paths, since it's
     // a different tree.

@@ -57,7 +57,7 @@ contract OfferingPolicy {
         Offering memory o = offerings[offeringId];
         require(o.exists, "unknown offering");
 
-        // Recorded-value cross-checks (credential-protocol.md Section 5.4) - before the expensive
+        // Recorded-value cross-checks (credential-protocol.md Section 5.3) - before the expensive
         // cryptographic verification, so a mismatched offering fails cheaply. Necessary
         // because verifyProof only proves this proof is internally consistent with these
         // exact public inputs - it has no notion of "current". A proof stays
@@ -71,7 +71,7 @@ contract OfferingPolicy {
         require(publicSignals[3] == uint256(registry.validSetRootAt(publicSignals[4])), "wrong validSetRoot for the current epoch");
         require(publicSignals[5] == offeringId, "wrong scope for this offering");
 
-        // Cryptographic binding (credential-protocol.md Section 5.4) - the proof itself.
+        // Cryptographic binding (credential-protocol.md Section 5.3) - the proof itself.
         require(verifier.verifyProof(pA, pB, pC, publicSignals), "invalid proof");
 
         // Atomic with verification - no window for a second presentation to slip
